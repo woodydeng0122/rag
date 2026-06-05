@@ -18,7 +18,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                     dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                 RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
                 model.name, model.dimension, model.description, model.status,
-                json.dumps(model.metadata or {}),
+                json.dumps(model.metadata, ensure_ascii=False),
             )
         return _row_to_model(row)
 
@@ -36,7 +36,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                         dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                     RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
                     m.name, m.dimension, m.description, m.status,
-                    json.dumps(m.metadata or {}),
+                    json.dumps(m.metadata, ensure_ascii=False),
                 )
                 results.append(_row_to_model(row))
         return results

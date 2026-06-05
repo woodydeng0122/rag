@@ -19,6 +19,7 @@ class EmbedModelListResponse(BaseModel):
 class CreateEmbedModelRequest(BaseModel):
     name: str
     description: str = ""
+    dimension: int = 0  # 本地无 config.json 时由用户指定
 
 
 class UpdateEmbedModelRequest(BaseModel):

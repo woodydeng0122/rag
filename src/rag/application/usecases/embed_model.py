@@ -23,30 +23,35 @@ class EmbedModelUseCase:
     async def get(self, model_id: str) -> EmbedModel | None:
         return await self._repo.get_by_id(model_id)
 
-    async def create(self, name: str, dimension: int = 0, description: str = "") -> EmbedModel:
+    async def create(self, name: str, dimension: int = 0, description: str = "", metadata: dict | None = None) -> EmbedModel:
         """创建模型 — 校验名称唯一，尝试从本地 config.json 自动填充维度"""
         existing = await self._repo.get_by_name(name)
         if existing:
             raise ValueError(f"模型名称已存在: {name}")
 
-        # 尝试从本地模型目录读取配置
-        config = self._scanner.read_config(name)
-        if config:
-            dimension = config.get("hidden_size", dimension)
-            status = "online"
+        # 如果未传 metadata，尝试从本地模型目录读取配置
+        if metadata is None:
+            config = self._scanner.read_config(name)
+            if config:
+                dimension = config.get("hidden_size", dimension)
+                metadata = config
+                status = "online"
+            else:
+                status = "offline"
         else:
-            status = "offline" if dimension == 0 else "offline"
+            status = "online" if metadata else "offline"
 
         model = EmbedModel(
             name=name,
             dimension=dimension,
             description=description,
             status=status,
+            metadata=metadata or {},
         )
         return await self._repo.save(model)
 
-    async def update(self, model_id: str, name: str, dimension: int, description: str = "") -> EmbedModel:
-        """更新模型 — 校验存在性和名称唯一"""
+    async def update(self, model_id: str, name: str, description: str = "") -> EmbedModel:
+        """更新模型 — 仅允许修改名称和备注"""
         existing = await self._repo.get_by_id(model_id)
         if existing is None:
             raise ValueError(f"模型 {model_id} 不存在")
@@ -56,7 +61,6 @@ class EmbedModelUseCase:
             raise ValueError(f"模型名称已存在: {name}")
 
         existing.name = name
-        existing.dimension = dimension
         existing.description = description
         return await self._repo.update(existing)
 

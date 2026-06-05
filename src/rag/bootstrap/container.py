@@ -45,6 +45,8 @@ class Container:
     retrieve: RetrieveUseCase
     evaluate: EvaluateUseCase
     settings: Settings
+    # 基础设施
+    model_scanner: ModelScanner
 
 
 # 模块级单例
@@ -147,6 +149,7 @@ def build_container(settings: Settings | None = None) -> Container:
         retrieve=retrieve,
         evaluate=evaluate,
         settings=settings,
+        model_scanner=model_scanner,
     )
 
 

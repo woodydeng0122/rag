@@ -1,18 +1,4 @@
 services:
-  # PostgreSQL + pgvector 数据库
-  dev-rag-db:
-    image: pgvector/pgvector:pg18
-    container_name: dev-rag-db
-    ports:
-      - "5434:5432"
-    environment:
-      - POSTGRES_DB=rag-db
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - rag-postgres-data:/var/lib/postgresql
-      - ./src/rag/infra/database/migrations:/docker-entrypoint-initdb.d
-
   # AI Service (Python/Flask) - Run locally via image with local code mounted
   dev-service-rag:
     image: python:3.11-slim
@@ -34,6 +20,5 @@ services:
     restart: no
 
 volumes:
-  rag-postgres-data:
   pip-cache:
   python-site-packages:
