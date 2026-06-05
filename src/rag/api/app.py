@@ -8,25 +8,18 @@ from .routes import health_router, retrieve_router, ask_router, evaluate_router
 from .routes.project import router as project_router
 from .routes.upload import router as upload_router
 from .routes.document import router as document_router
+from .routes.golden_dataset import router as golden_dataset_router
+from .routes.profile import router as profile_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
-from rag.infra.database.connection import init_pool, close_pool
-from rag.bootstrap.settings import Settings
+from rag.bootstrap.startup import startup
+from rag.infra.database.connection import close_pool
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动：初始化数据库连接池
-    settings = Settings.from_env()
-    await init_pool(
-        host=settings.db_host,
-        port=settings.db_port,
-        database=settings.db_name,
-        user=settings.db_user,
-        password=settings.db_password,
-    )
+    await startup()
     yield
-    # 关闭：释放连接池
     await close_pool()
 
 
@@ -81,3 +74,5 @@ app.include_router(evaluate_router)
 app.include_router(project_router)
 app.include_router(upload_router)
 app.include_router(document_router)
+app.include_router(golden_dataset_router)
+app.include_router(profile_router)

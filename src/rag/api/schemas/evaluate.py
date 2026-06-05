@@ -17,3 +17,8 @@ class EvaluateResponse(BaseModel):
     latency_total_ms: float = Field(0.0, description="总延迟（ms）")
     latency_avg_ms: float = Field(0.0, description="平均延迟（ms）")
     failure: list[str] = Field(default_factory=list, description="未命中的查询列表")
+
+
+class EvaluateByProjectRequest(BaseModel):
+    golden_ids: list[str] = Field(..., description="黄金记录 ID 列表")
+    k_list: list[int] = Field(default=[10], description="Recall@K 的 K 值列表")

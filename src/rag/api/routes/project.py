@@ -15,6 +15,12 @@ def _project_to_response(p: Project) -> ProjectResponse:
         description=p.description,
         created_at=p.created_at.isoformat() if p.created_at else "",
         updated_at=p.updated_at.isoformat() if p.updated_at else "",
+        eval_recall_at_10=p.eval_recall_at_10,
+        eval_mrr=p.eval_mrr,
+        eval_answerable=p.eval_answerable,
+        eval_total=p.eval_total,
+        eval_latency_avg_ms=p.eval_latency_avg_ms,
+        evaluated_at=p.evaluated_at.isoformat() if p.evaluated_at else None,
     )
 
 

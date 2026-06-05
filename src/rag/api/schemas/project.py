@@ -17,6 +17,13 @@ class ProjectResponse(BaseModel):
     description: str
     created_at: str = ""
     updated_at: str = ""
+    # 评测汇总字段
+    eval_recall_at_10: float | None = None
+    eval_mrr: float | None = None
+    eval_answerable: int | None = None
+    eval_total: int | None = None
+    eval_latency_avg_ms: float | None = None
+    evaluated_at: str | None = None
 
 
 class ProjectListResponse(BaseModel):

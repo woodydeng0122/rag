@@ -16,3 +16,9 @@ class ChunkRepositoryPort(ABC):
 
     @abstractmethod
     async def list_by_document(self, document_id: str) -> list[Chunk]: ...
+
+    @abstractmethod
+    async def list_by_project(self, project_id: str, limit: int = 20, offset: int = 0) -> list[Chunk]: ...
+
+    @abstractmethod
+    async def search_by_project(self, project_id: str, query: str, limit: int = 20, offset: int = 0) -> list[Chunk]: ...

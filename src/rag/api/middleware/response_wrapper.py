@@ -108,9 +108,13 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
 
                     wrapped_body_bytes = json.dumps(wrapped, ensure_ascii=False).encode("utf-8")
 
-                    # 记录响应体到日志
+                    # 记录响应体到日志（列表型只记摘要）
                     if should_log:
-                        event["response_body"] = data
+                        if isinstance(data, list):
+                            event["result_count"] = len(data)
+                            event["response_body"] = data[:1] if data else []
+                        else:
+                            event["response_body"] = data
 
         # ── 构建最终响应 ──
         if wrapped_body_bytes is not None:

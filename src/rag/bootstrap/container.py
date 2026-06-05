@@ -4,16 +4,21 @@ from rag.application.usecases.chunk_and_embed import ChunkAndEmbedUseCase
 from rag.application.usecases.ask import AskUseCase
 from rag.application.usecases.retrieve import RetrieveUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
+from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
 from rag.application.usecases.upload import UploadUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
+from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
+from rag.domain.ports.profile_repository import ProfileRepositoryPort
 from rag.infra.repositories.pg_project_repository import PgProjectRepository
 from rag.infra.repositories.pg_document_repository import PgDocumentRepository
 from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
 from rag.infra.repositories.pg_embedding_repository import PgEmbeddingRepository
+from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
+from rag.infra.repositories.pg_profile_repository import PgProfileRepository
 from rag.infra.repositories.jsonl_chunk_repository import JsonlChunkRepository
 from rag.infra.repositories.jsonl_embedding_repository import JsonlEmbeddingRepository
 from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
@@ -30,11 +35,13 @@ class Container:
     # 新增用例
     upload_usecase: UploadUseCase
     process_document_usecase: ProcessDocumentUseCase
+    golden_dataset_usecase: GoldenDatasetUseCase
     # PG 仓储
     project_repo: ProjectRepositoryPort
     document_repo: DocumentRepositoryPort
     chunk_repo: ChunkRepositoryPort
-    embedding_repo: EmbeddingRepositoryPort
+    golden_repo: GoldenDatasetRepositoryPort
+    profile_repo: ProfileRepositoryPort
     # 原有用例
     chunk_and_embed: ChunkAndEmbedUseCase
     ask: AskUseCase
@@ -58,6 +65,8 @@ def build_container(settings: Settings | None = None) -> Container:
     pg_document_repo = PgDocumentRepository()
     pg_chunk_repo = PgChunkRepository()
     pg_embedding_repo = PgEmbeddingRepository()
+    pg_golden_repo = PgGoldenDatasetRepository()
+    pg_profile_repo = PgProfileRepository()
 
     # JSONL 仓储（原有，保留兼容）
     jsonl_chunk_repo = JsonlChunkRepository()
@@ -91,6 +100,7 @@ def build_container(settings: Settings | None = None) -> Container:
         splitter=splitter,
         embedder=embedder,
     )
+    golden_dataset_usecase = GoldenDatasetUseCase(golden_repo=pg_golden_repo)
 
     # 原有用例组装
     chunk_and_embed = ChunkAndEmbedUseCase(
@@ -113,6 +123,9 @@ def build_container(settings: Settings | None = None) -> Container:
     )
     evaluate = EvaluateUseCase(
         retriever=retriever,
+        golden_repo=pg_golden_repo,
+        profile_repo=pg_profile_repo,
+        project_repo=pg_project_repo,
         embedding_file=settings.embedding_file,
         golden_file=settings.golden_file,
         embedder_model=settings.embedder_model,
@@ -121,10 +134,11 @@ def build_container(settings: Settings | None = None) -> Container:
     return Container(
         upload_usecase=upload_usecase,
         process_document_usecase=process_document_usecase,
+        golden_dataset_usecase=golden_dataset_usecase,
         project_repo=pg_project_repo,
         document_repo=pg_document_repo,
         chunk_repo=pg_chunk_repo,
-        embedding_repo=pg_embedding_repo,
+        golden_repo=pg_golden_repo,
         chunk_and_embed=chunk_and_embed,
         ask=ask,
         retrieve=retrieve,

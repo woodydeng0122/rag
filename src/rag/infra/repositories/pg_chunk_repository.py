@@ -45,6 +45,64 @@ class PgChunkRepository(ChunkRepositoryPort):
             for row in rows
         ]
 
+    async def list_by_project(self, project_id: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
+        """按项目查询分块（跨文档），支持分页"""
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT c.id, c.content, c.index, c.heading, c.source_file
+                   FROM chunk c
+                   JOIN document d ON c.document_id = d.id
+                   WHERE d.project_id = $1
+                   ORDER BY c.created_at DESC
+                   LIMIT $2 OFFSET $3""",
+                _to_uuid(project_id),
+                limit,
+                offset,
+            )
+        return [_row_to_chunk(row) for row in rows]
+
+    async def search_by_project(self, project_id: str, query: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
+        """按项目搜索分块内容，支持分页"""
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            if query:
+                rows = await conn.fetch(
+                    """SELECT c.id, c.content, c.index, c.heading, c.source_file
+                       FROM chunk c
+                       JOIN document d ON c.document_id = d.id
+                       WHERE d.project_id = $1 AND c.content ILIKE $2
+                       ORDER BY c.created_at DESC
+                       LIMIT $3 OFFSET $4""",
+                    _to_uuid(project_id),
+                    f"%{query}%",
+                    limit,
+                    offset,
+                )
+            else:
+                rows = await conn.fetch(
+                    """SELECT c.id, c.content, c.index, c.heading, c.source_file
+                       FROM chunk c
+                       JOIN document d ON c.document_id = d.id
+                       WHERE d.project_id = $1
+                       ORDER BY c.created_at DESC
+                       LIMIT $2 OFFSET $3""",
+                    _to_uuid(project_id),
+                    limit,
+                    offset,
+                )
+        return [_row_to_chunk(row) for row in rows]
+
 
 def _to_uuid(value: str) -> str:
     return value
+
+
+def _row_to_chunk(row) -> Chunk:
+    return Chunk(
+        id=row["id"],
+        content=row["content"],
+        index=row["index"],
+        source_file=row["source_file"],
+        heading=row["heading"],
+    )

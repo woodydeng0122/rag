@@ -13,7 +13,6 @@ class Document:
     file_type: str = ""
     checksum: str = ""
     status: str = "uploaded"
-    embedder_model: str = ""
     splitter_strategy: str = "section_heading"
     chunk_size: int = 500
     chunk_overlap: int = 50

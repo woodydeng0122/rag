@@ -42,3 +42,9 @@ class JsonlChunkRepository(ChunkRepositoryPort):
 
     async def list_by_document(self, document_id: str) -> list[Chunk]:
         raise NotImplementedError("JSONL 仓储不支持 list_by_document，请使用 PG 仓储")
+
+    async def list_by_project(self, project_id: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
+        raise NotImplementedError("JSONL 仓储不支持 list_by_project，请使用 PG 仓储")
+
+    async def search_by_project(self, project_id: str, query: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
+        raise NotImplementedError("JSONL 仓储不支持 search_by_project，请使用 PG 仓储")

@@ -168,6 +168,35 @@ async def get_chunk_embedding(
     )
 
 
+@router.get("/projects/{project_id}/chunks/search", response_model=ChunkListResponse)
+async def search_chunks_by_project(
+    project_id: str,
+    q: str = "",
+    limit: int = 20,
+    offset: int = 0,
+    container: Container = Depends(get_container),
+):
+    """按项目搜索分块内容，支持分页"""
+    if q:
+        chunks = await container.chunk_repo.search_by_project(project_id, q, limit, offset)
+    else:
+        chunks = await container.chunk_repo.list_by_project(project_id, limit, offset)
+    return ChunkListResponse(
+        document_id="",
+        total=len(chunks),
+        chunks=[
+            ChunkResponse(
+                id=c.id,
+                index=c.index,
+                heading=c.heading,
+                content=c.content[:200] + "..." if len(c.content) > 200 else c.content,
+                source_file=c.source_file,
+            )
+            for c in chunks
+        ],
+    )
+
+
 @router.post("/documents/batch-process", response_model=BatchProcessResponse)
 async def batch_process_documents(
     req: BatchProcessRequest,

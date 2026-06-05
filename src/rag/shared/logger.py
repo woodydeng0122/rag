@@ -78,6 +78,7 @@ def _format_wide_event(event: dict, c) -> str:
     duration_ms = event.get("duration_ms")
     error = event.get("error", "")
     request_body = event.get("request_body")
+    result_count = event.get("result_count")
     response_body = event.get("response_body")
 
     # ── 输入行 ──
@@ -115,6 +116,9 @@ def _format_wide_event(event: dict, c) -> str:
     duration_str = f"{duration_ms}ms" if duration_ms is not None else "-"
     output_parts = [f"{c.GRAY}←{c.RESET} {status_str} {c.DIM}{duration_str}{c.RESET}"]
 
+    if result_count is not None:
+        output_parts.append(f"{c.CYAN}items={result_count}{c.RESET}" if c is not _NoColor else f"items={result_count}")
+
     if error:
         output_parts.append(f"{c.RED}{error}{c.RESET}" if c is not _NoColor else error)
 
@@ -125,10 +129,23 @@ def _format_wide_event(event: dict, c) -> str:
     # ── 响应体 ──
     resp_lines = []
     if response_body is not None:
-        truncated = _truncate(response_body)
-        body_str = json.dumps(truncated, ensure_ascii=False, indent=2)
-        for line in body_str.split("\n"):
-            resp_lines.append(f"  {c.DIM}{line}{c.RESET}" if c is not _NoColor else f"  {line}")
+        if result_count is not None:
+            # 列表型响应：只显示首项预览 + 总数
+            if response_body:
+                preview = _truncate(response_body[0], max_str=120, max_list=2)
+                preview_str = json.dumps(preview, ensure_ascii=False, indent=2)
+                first_line = f"  {c.DIM}[0] {preview_str.split(chr(10))[0]}{c.RESET}" if c is not _NoColor else f"  [0] {preview_str.split(chr(10))[0]}"
+                resp_lines.append(first_line)
+                if result_count > 1:
+                    more = f"  {c.DIM}... +{result_count - 1} more items{c.RESET}" if c is not _NoColor else f"  ... +{result_count - 1} more items"
+                    resp_lines.append(more)
+            else:
+                resp_lines.append(f"  {c.DIM}[] (empty list){c.RESET}" if c is not _NoColor else "  [] (empty list)")
+        else:
+            truncated = _truncate(response_body)
+            body_str = json.dumps(truncated, ensure_ascii=False, indent=2)
+            for line in body_str.split("\n"):
+                resp_lines.append(f"  {c.DIM}{line}{c.RESET}" if c is not _NoColor else f"  {line}")
 
     # ── 组装 ──
     lines = [input_line]
