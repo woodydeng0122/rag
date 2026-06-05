@@ -22,6 +22,7 @@ async def init_pool(
         password=password,
         min_size=min_size,
         max_size=max_size,
+        ssl=False,
     )
     return _pool
 

@@ -57,6 +57,7 @@ class ChunkResponse(BaseModel):
     heading: str = ""
     content: str
     source_file: str = ""
+    file_type: str = ""
 
 
 class ChunkListResponse(BaseModel):

@@ -94,6 +94,7 @@ async def list_chunks(
                 heading=c.heading,
                 content=c.content,
                 source_file=c.source_file,
+                file_type=doc.file_type,
             )
             for c in chunks
         ],
