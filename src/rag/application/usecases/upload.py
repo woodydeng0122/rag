@@ -1,0 +1,125 @@
+import hashlib
+import zipfile
+from pathlib import Path
+from uuid import uuid4
+
+from rag.domain.entities.document import Document
+from rag.domain.ports.document_repository import DocumentRepositoryPort
+
+
+ALLOWED_EXTENSIONS = {".md", ".txt", ".pdf"}
+
+
+class UploadUseCase:
+    """上传用例 — 接收文件/zip，存储到 docs/{upload_id}/，创建 document 记录"""
+
+    def __init__(self, document_repo: DocumentRepositoryPort):
+        self._document_repo = document_repo
+
+    async def execute(
+        self,
+        project_id: str,
+        filename: str,
+        file_content: bytes,
+        embedder_model: str = "",
+        splitter_strategy: str = "section_heading",
+        chunk_size: int = 500,
+        chunk_overlap: int = 50,
+        splitter_min_chars: int = 200,
+        splitter_max_chars: int = 2000,
+    ) -> list[Document]:
+        upload_id = str(uuid4())
+        docs_dir = Path("docs") / upload_id
+        docs_dir.mkdir(parents=True, exist_ok=True)
+
+        # 判断是否为 zip
+        if filename.lower().endswith(".zip"):
+            return await self._handle_zip(
+                file_content, docs_dir, upload_id, project_id,
+                embedder_model, splitter_strategy, chunk_size, chunk_overlap,
+                splitter_min_chars, splitter_max_chars,
+            )
+        else:
+            # 单文件
+            ext = Path(filename).suffix.lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                raise ValueError(f"不支持的文件类型: {ext}，仅支持 {ALLOWED_EXTENSIONS}")
+
+            file_path = docs_dir / filename
+            file_path.write_bytes(file_content)
+            checksum = hashlib.sha256(file_content).hexdigest()
+
+            doc = Document(
+                project_id=project_id,
+                filename=filename,
+                file_path=str(file_path),
+                file_size=len(file_content),
+                file_type=ext.lstrip("."),
+                checksum=checksum,
+                status="uploaded",
+                embedder_model=embedder_model,
+                splitter_strategy=splitter_strategy,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                splitter_min_chars=splitter_min_chars,
+                splitter_max_chars=splitter_max_chars,
+            )
+            saved = await self._document_repo.save(doc)
+            return [saved]
+
+    async def _handle_zip(
+        self,
+        file_content: bytes,
+        docs_dir: Path,
+        upload_id: str,
+        project_id: str,
+        embedder_model: str,
+        splitter_strategy: str,
+        chunk_size: int,
+        chunk_overlap: int,
+        splitter_min_chars: int,
+        splitter_max_chars: int,
+    ) -> list[Document]:
+        """解压 zip 并为每个支持的文件创建 document 记录"""
+        import io
+
+        zip_buffer = io.BytesIO(file_content)
+        documents = []
+
+        with zipfile.ZipFile(zip_buffer, "r") as zf:
+            for entry in zf.namelist():
+                # 跳过目录和隐藏文件
+                if entry.endswith("/") or Path(entry).name.startswith("."):
+                    continue
+
+                ext = Path(entry).suffix.lower()
+                if ext not in ALLOWED_EXTENSIONS:
+                    continue
+
+                # 保持目录结构解压
+                entry_content = zf.read(entry)
+                target_path = docs_dir / entry
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_bytes(entry_content)
+
+                checksum = hashlib.sha256(entry_content).hexdigest()
+
+                doc = Document(
+                    project_id=project_id,
+                    filename=Path(entry).name,
+                    file_path=str(target_path),
+                    file_size=len(entry_content),
+                    file_type=ext.lstrip("."),
+                    checksum=checksum,
+                    status="uploaded",
+                    embedder_model=embedder_model,
+                    splitter_strategy=splitter_strategy,
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    splitter_min_chars=splitter_min_chars,
+                    splitter_max_chars=splitter_max_chars,
+                )
+                saved = await self._document_repo.save(doc)
+                documents.append(saved)
+
+        return documents

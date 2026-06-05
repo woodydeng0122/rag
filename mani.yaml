@@ -1,0 +1,6 @@
+projects:
+  rag-web:
+    desc: 前端
+    url: https://github.com/woodydeng0122/rag-web.git
+    path: rag-web
+    tags: [frontend, react, vite]

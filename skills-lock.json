@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "ant-design-vue": {
+      "source": "teachingai/full-stack-skills",
+      "sourceType": "github",
+      "skillPath": "skills/antd-skills/ant-design-vue/SKILL.md",
+      "computedHash": "2c1460210dc687422a769b215952ae4f18272fe7768e6de48279df8b519d45ba"
+    }
+  }
+}

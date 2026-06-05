@@ -1,0 +1,52 @@
+from fastapi import APIRouter, Depends, UploadFile, File, Form
+
+from rag.api.schemas.upload import UploadResponse
+from rag.bootstrap.container import Container, get_container
+
+router = APIRouter(prefix="/api", tags=["upload"])
+
+
+@router.post("/projects/{project_id}/documents", response_model=UploadResponse)
+async def upload_documents(
+    project_id: str,
+    file: UploadFile = File(...),
+    embedder_model: str = Form("models/BAAI/bge-small-zh-v1.5"),
+    splitter_strategy: str = Form("section_heading"),
+    chunk_size: int = Form(500),
+    chunk_overlap: int = Form(50),
+    splitter_min_chars: int = Form(200),
+    splitter_max_chars: int = Form(2000),
+    container: Container = Depends(get_container),
+):
+    file_content = await file.read()
+    filename = file.filename or "unknown"
+
+    try:
+        documents = await container.upload_usecase.execute(
+            project_id=project_id,
+            filename=filename,
+            file_content=file_content,
+            embedder_model=embedder_model,
+            splitter_strategy=splitter_strategy,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            splitter_min_chars=splitter_min_chars,
+            splitter_max_chars=splitter_max_chars,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return UploadResponse(
+        documents=[
+            {
+                "id": d.id,
+                "filename": d.filename,
+                "file_type": d.file_type,
+                "file_size": d.file_size,
+                "status": d.status,
+            }
+            for d in documents
+        ],
+        count=len(documents),
+    )

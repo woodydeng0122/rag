@@ -1,0 +1,14 @@
+{
+    "files.exclude": {
+        "build": true,
+        "uv.lock": true,
+        "**/__pycache__": true,
+        "ai.egg-info": true,
+        "**/.pytest_cache": true,
+        "**/.ruff_cache": true,
+        "**/.import_linter_cache": true,
+        "**/.venv": true,
+        "CLAUDE.md": true,
+        "src/rag.egg-info": true,
+    }
+}

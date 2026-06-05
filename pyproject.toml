@@ -1,0 +1,84 @@
+[project]
+name = "rag"
+version = "0.1.0"
+requires-python = ">=3.11,<3.13"
+
+dependencies = [
+    "torch>=2.2.0",
+    "torchvision>=0.17.0",
+    "sentence-transformers>=2.7.0",
+    "numpy>=1.26.0",
+    "pypdf>=4.3.0",
+    "openai>=1.10.0,<2.0.0",
+    "modelscope>=1.9.0,<2.0.0",
+    "transformers>=4.36.0",
+    "fastapi>=0.109.0,<1.0.0",
+    "uvicorn[standard]>=0.27.0,<1.0.0",
+    "asyncpg>=0.29.0,<1.0.0",
+    "python-multipart>=0.0.6,<1.0.0",
+    "import-linter>=2.0,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "black>=23.0",
+    "isort>=5.12",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# import-linter 配置
+# layers 列表从高到低：高层可以依赖低层，低层不能依赖高层
+#
+# 依赖方向：
+#   api/cli/bootstrap → infra | application → domain
+#   api/cli 互不依赖，都不依赖 bootstrap
+#   infra 和 application 同层，互不依赖
+#
+# import-linter 的 layers 规则：同层之间不能互相依赖
+# forbidden 合约补充约束
+[tool.importlinter]
+root_package = "src.rag"
+
+# 规则1：分层架构 — 高层可依赖低层
+[[tool.importlinter.contracts]]
+name = "Clean Architecture layers"
+type = "layers"
+layers = [
+    "src.rag.api | src.rag.cli | src.rag.bootstrap",
+    "src.rag.infra | src.rag.application",
+    "src.rag.domain",
+]
+
+# 规则2：domain 不依赖任何内部模块（除了 shared）
+[[tool.importlinter.contracts]]
+name = "Domain independence"
+type = "forbidden"
+source_modules = ["src.rag.domain"]
+forbidden_modules = ["src.rag.application", "src.rag.infra", "src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
+
+# 规则3：application 不依赖外层
+[[tool.importlinter.contracts]]
+name = "Application isolation"
+type = "forbidden"
+source_modules = ["src.rag.application"]
+forbidden_modules = ["src.rag.infra", "src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
+
+# 规则4：infra 不依赖入口层和组合根
+[[tool.importlinter.contracts]]
+name = "Infra isolation"
+type = "forbidden"
+source_modules = ["src.rag.infra"]
+forbidden_modules = ["src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
