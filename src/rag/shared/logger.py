@@ -47,16 +47,40 @@ class _NoColor:
     MAGENTA = BLUE = WHITE = GRAY = ""
 
 
+# ── 截断工具 ───────────────────────────────────────────────
+
+def _truncate(obj, max_str=200, max_list=5):
+    """递归截断大对象，避免日志过长"""
+    if isinstance(obj, str):
+        if len(obj) > max_str:
+            return obj[:max_str] + f"... ({len(obj)} chars)"
+        return obj
+    if isinstance(obj, list):
+        if len(obj) > max_list:
+            truncated = [_truncate(item, max_str, max_list) for item in obj[:max_list]]
+            return truncated + [f"... +{len(obj) - max_list} more"]
+        return [_truncate(item, max_str, max_list) for item in obj]
+    if isinstance(obj, dict):
+        return {k: _truncate(v, max_str, max_list) for k, v in obj.items()}
+    return obj
+
+
 # ── 格式化 ─────────────────────────────────────────────────
 
-def _format_input(event: dict, c) -> str:
-    """格式化输入日志：→ method path [params]"""
+def _format_wide_event(event: dict, c) -> str:
+    """格式化 wide event：→ method path [params] ← status duration {body}"""
     method = event.get("method", "")
     path = event.get("path", "")
     rid = event.get("request_id", "")
     params = event.get("params", {})
     query = event.get("query", "")
+    status_code = event.get("status_code")
+    duration_ms = event.get("duration_ms")
+    error = event.get("error", "")
+    request_body = event.get("request_body")
+    response_body = event.get("response_body")
 
+    # ── 输入行 ──
     method_str = f"{_METHOD_COLORS.get(method, c.WHITE)}{method}{c.RESET}" if c is not _NoColor else method
     path_str = f"{c.BOLD}{path}{c.RESET}" if c is not _NoColor else path
 
@@ -71,32 +95,48 @@ def _format_input(event: dict, c) -> str:
 
     parts.append(f"{c.DIM}[{rid}]{c.RESET}" if c is not _NoColor else f"[{rid}]")
 
-    return " ".join(parts)
+    input_line = " ".join(parts)
 
+    # ── 请求体 ──
+    body_lines = []
+    if request_body is not None:
+        truncated = _truncate(request_body)
+        body_str = json.dumps(truncated, ensure_ascii=False, indent=2)
+        for line in body_str.split("\n"):
+            body_lines.append(f"  {c.DIM}{line}{c.RESET}" if c is not _NoColor else f"  {line}")
 
-def _format_output(event: dict, c) -> str:
-    """格式化输出日志：← status duration"""
-    status_code = event.get("status_code", "")
-    duration = event.get("duration_ms", "")
-    rid = event.get("request_id", "")
-    error = event.get("error", "")
-
-    if status_code != "":
+    # ── 输出行 ──
+    if status_code is not None:
         sc = int(status_code)
         status_str = f"{_status_color(sc)}{sc}{c.RESET}" if c is not _NoColor else str(sc)
     else:
         status_str = "-"
 
-    duration_str = f"{duration}ms" if duration != "" else "-"
-
-    parts = [f"{c.GRAY}←{c.RESET} {status_str} {c.DIM}{duration_str}{c.RESET}"]
+    duration_str = f"{duration_ms}ms" if duration_ms is not None else "-"
+    output_parts = [f"{c.GRAY}←{c.RESET} {status_str} {c.DIM}{duration_str}{c.RESET}"]
 
     if error:
-        parts.append(f"{c.RED}{error}{c.RESET}" if c is not _NoColor else error)
+        output_parts.append(f"{c.RED}{error}{c.RESET}" if c is not _NoColor else error)
 
-    parts.append(f"{c.DIM}[{rid}]{c.RESET}" if c is not _NoColor else f"[{rid}]")
+    output_parts.append(f"{c.DIM}[{rid}]{c.RESET}" if c is not _NoColor else f"[{rid}]")
 
-    return " ".join(parts)
+    output_line = " ".join(output_parts)
+
+    # ── 响应体 ──
+    resp_lines = []
+    if response_body is not None:
+        truncated = _truncate(response_body)
+        body_str = json.dumps(truncated, ensure_ascii=False, indent=2)
+        for line in body_str.split("\n"):
+            resp_lines.append(f"  {c.DIM}{line}{c.RESET}" if c is not _NoColor else f"  {line}")
+
+    # ── 组装 ──
+    lines = [input_line]
+    lines.extend(body_lines)
+    lines.append(output_line)
+    lines.extend(resp_lines)
+
+    return "\n".join(lines)
 
 
 def _format_simple(event: dict, c) -> str:
@@ -105,17 +145,26 @@ def _format_simple(event: dict, c) -> str:
     timestamp = event.get("timestamp", "")
     message = event.get("message", "")
 
-    level_colors = {"info": _C.GREEN, "error": _C.RED}
+    level_colors = {"info": _C.GREEN, "warning": _C.YELLOW, "error": _C.RED}
     level_color = level_colors.get(level, _C.WHITE)
-    level_str = f"{level_color}{level.upper():<5}{c.RESET}" if c is not _NoColor else f"{level.upper():<5}"
+    level_str = f"{level_color}{level.upper():<7}{c.RESET}" if c is not _NoColor else f"{level.upper():<7}"
 
-    return f"{c.DIM}{timestamp}{c.RESET} {level_str} {message}"
+    # 如果有 extra 字段，也打印出来
+    extra_keys = set(event.keys()) - {"level", "timestamp", "message"}
+    extra_parts = []
+    for k in sorted(extra_keys):
+        v = event[k]
+        extra_parts.append(f"{k}={v}")
+
+    extra_str = f" {c.DIM}[{' '.join(extra_parts)}]{c.RESET}" if extra_parts else ""
+
+    return f"{c.DIM}{timestamp}{c.RESET} {level_str} {message}{extra_str}"
 
 
 # ── 格式化器 ───────────────────────────────────────────────
 
 class _RequestFormatter(logging.Formatter):
-    """智能格式化器：输入日志 → → 格式，输出日志 → ← 格式"""
+    """智能格式化器：wide event → 结构化多行，普通日志 → 一行式"""
 
     def __init__(self) -> None:
         super().__init__()
@@ -129,16 +178,16 @@ class _RequestFormatter(logging.Formatter):
         else:
             event = {"message": str(record.msg)}
 
+        # 合并 extra 字段
+        if hasattr(record, "extra") and isinstance(record.extra, dict):
+            event.update(record.extra)
+
         event.setdefault("timestamp", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"))
         event.setdefault("level", record.levelname.lower())
 
-        # 有 method+path → 输入日志
-        if "method" in event and "path" in event:
-            return _format_input(event, c)
-
-        # 有 status_code → 输出日志
-        if "status_code" in event:
-            return _format_output(event, c)
+        # wide event：有 method+path 或 status_code
+        if "method" in event or "status_code" in event:
+            return _format_wide_event(event, c)
 
         return _format_simple(event, c)
 

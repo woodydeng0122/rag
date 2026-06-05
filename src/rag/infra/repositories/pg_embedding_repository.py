@@ -27,6 +27,19 @@ class PgEmbeddingRepository(EmbeddingRepositoryPort):
                 ],
             )
 
+    async def get_by_chunk_id(self, chunk_id: str) -> Embedding | None:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT chunk_id, vector, embedder_model FROM embedding WHERE chunk_id = $1",
+                chunk_id,
+            )
+        if row is None:
+            return None
+        vector_str = row["vector"]
+        vector = [float(v) for v in vector_str.strip("[]").split(",")]
+        return Embedding(chunk_id=row["chunk_id"], vector=vector)
+
 
 def _vector_to_str(vector: list[float]) -> str:
     """将向量列表转换为 pgvector 接受的字符串格式"""

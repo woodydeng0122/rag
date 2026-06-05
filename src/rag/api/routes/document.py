@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse
+from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse
 from rag.bootstrap.container import Container, get_container
+from rag.shared.logger import logger
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
@@ -98,6 +99,72 @@ async def list_chunks(
             )
             for c in chunks
         ],
+    )
+
+
+@router.get("/documents/{document_id}/source", response_model=SourceContentResponse)
+async def get_source_content(
+    document_id: str,
+    container: Container = Depends(get_container),
+):
+    """获取文档源文件内容（仅支持文本类型）"""
+    logger.info("get_source_content called", extra={"document_id": document_id})
+
+    doc = await container.document_repo.get_by_id(document_id)
+    if doc is None:
+        logger.warning("document not found", extra={"document_id": document_id})
+        raise HTTPException(status_code=404, detail="文档不存在")
+
+    logger.info("document found", extra={
+        "document_id": document_id,
+        "file_type": doc.file_type,
+        "file_path": doc.file_path,
+    })
+
+    if doc.file_type == "pdf":
+        raise HTTPException(status_code=400, detail="PDF 文件不支持源文件预览")
+
+    try:
+        from pathlib import Path
+        file_path = Path(doc.file_path)
+        if not file_path.exists():
+            logger.warning("source file not found on disk", extra={"file_path": str(file_path)})
+            raise HTTPException(status_code=404, detail="源文件不存在")
+        content = file_path.read_text(encoding="utf-8")
+        logger.info("source file read success", extra={
+            "document_id": document_id,
+            "content_length": len(content),
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("failed to read source file", extra={
+            "document_id": document_id,
+            "file_path": doc.file_path,
+            "error": str(e),
+        })
+        raise HTTPException(status_code=500, detail=f"读取文件失败: {e}")
+
+    return SourceContentResponse(
+        document_id=document_id,
+        file_type=doc.file_type,
+        content=content,
+    )
+
+
+@router.get("/chunks/{chunk_id}/embedding", response_model=EmbeddingResponse)
+async def get_chunk_embedding(
+    chunk_id: str,
+    container: Container = Depends(get_container),
+):
+    """获取分块的 embedding 向量"""
+    embedding = await container.embedding_repo.get_by_chunk_id(chunk_id)
+    if embedding is None:
+        raise HTTPException(status_code=404, detail="该分块暂无 embedding 数据")
+    return EmbeddingResponse(
+        chunk_id=embedding.chunk_id,
+        vector=embedding.vector,
+        dimension=len(embedding.vector),
     )
 
 

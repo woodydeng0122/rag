@@ -13,3 +13,6 @@ class EmbeddingRepositoryPort(ABC):
 
     @abstractmethod
     async def save_batch(self, embeddings: list[Embedding], embedder_model: str = "") -> None: ...
+
+    @abstractmethod
+    async def get_by_chunk_id(self, chunk_id: str) -> Embedding | None: ...

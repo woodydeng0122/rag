@@ -64,3 +64,15 @@ class ChunkListResponse(BaseModel):
     document_id: str
     total: int
     chunks: list[ChunkResponse]
+
+
+class SourceContentResponse(BaseModel):
+    document_id: str
+    file_type: str
+    content: str
+
+
+class EmbeddingResponse(BaseModel):
+    chunk_id: str
+    vector: list[float]
+    dimension: int

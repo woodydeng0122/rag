@@ -8,7 +8,6 @@ from .routes import health_router, retrieve_router, ask_router, evaluate_router
 from .routes.project import router as project_router
 from .routes.upload import router as upload_router
 from .routes.document import router as document_router
-from .middleware.logging import RequestLoggingMiddleware
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
 from rag.infra.database.connection import init_pool, close_pool
@@ -61,11 +60,8 @@ async def generic_error_handler(request: Request, exc: Exception):
 
 # ========== 中间件 ==========
 
-# 响应包装中间件 — 自动包装 /api/ 路径的响应为统一格式
+# 响应包装 + 请求日志中间件
 app.add_middleware(ResponseWrapperMiddleware)
-
-# 请求日志中间件
-app.add_middleware(RequestLoggingMiddleware)
 
 # CORS 中间件 — 允许前端跨域访问
 app.add_middleware(

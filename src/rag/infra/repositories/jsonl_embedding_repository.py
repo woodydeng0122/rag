@@ -32,3 +32,6 @@ class JsonlEmbeddingRepository(EmbeddingRepositoryPort):
 
     async def save_batch(self, embeddings: list[Embedding], embedder_model: str = "") -> None:
         raise NotImplementedError("JSONL 仓储不支持 save_batch，请使用 PG 仓储")
+
+    async def get_by_chunk_id(self, chunk_id: str) -> Embedding | None:
+        raise NotImplementedError("JSONL 仓储不支持 get_by_chunk_id，请使用 PG 仓储")

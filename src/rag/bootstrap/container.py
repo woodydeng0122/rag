@@ -34,6 +34,7 @@ class Container:
     project_repo: ProjectRepositoryPort
     document_repo: DocumentRepositoryPort
     chunk_repo: ChunkRepositoryPort
+    embedding_repo: EmbeddingRepositoryPort
     # 原有用例
     chunk_and_embed: ChunkAndEmbedUseCase
     ask: AskUseCase
@@ -123,6 +124,7 @@ def build_container(settings: Settings | None = None) -> Container:
         project_repo=pg_project_repo,
         document_repo=pg_document_repo,
         chunk_repo=pg_chunk_repo,
+        embedding_repo=pg_embedding_repo,
         chunk_and_embed=chunk_and_embed,
         ask=ask,
         retrieve=retrieve,

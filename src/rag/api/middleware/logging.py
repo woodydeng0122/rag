@@ -1,62 +1,122 @@
-"""请求日志中间件 — 只记录每个接口的输入与输出"""
+"""请求日志中间件 — 结构化打印每个请求的输入与输出（wide event 模式）"""
 
+import json
 import time
 import uuid
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, StreamingResponse
 
 from rag.shared.logger import logger
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
-    为每个 HTTP 请求记录输入和输出。
+    为每个 HTTP 请求记录一条 wide event，包含完整的输入与输出。
 
-    输入：method, path, path_params, query_params
-    输出：status_code, duration_ms
+    输入：method, path, path_params, query_params, request_body
+    输出：status_code, duration_ms, response_body
     """
+
+    # 不记录响应体的路径（避免大文件/二进制内容污染日志）
+    _SKIP_BODY_PATHS = {"/docs", "/openapi.json", "/redoc"}
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        start_time = time.monotonic()
+        # 跳过非 API 路径和文档路径
+        path = request.url.path
+        if path in self._SKIP_BODY_PATHS or not path.startswith("/api/"):
+            return await call_next(request)
 
-        # ── 输入 ──
-        input_event = {
-            "request_id": str(uuid.uuid4())[:8],
+        start_time = time.monotonic()
+        request_id = str(uuid.uuid4())[:8]
+
+        # ── 构建输入 ──
+        event = {
+            "request_id": request_id,
             "method": request.method,
-            "path": request.url.path,
+            "path": path,
         }
+
+        if request.path_params:
+            event["params"] = dict(request.path_params)
+
         query = str(request.query_params)
         if query:
-            input_event["query"] = query
+            event["query"] = query
 
-        # 记录路径参数（如 /projects/{project_id}/documents）
-        if request.path_params:
-            input_event["params"] = dict(request.path_params)
+        # 读取请求体（仅 JSON 请求）
+        request_body = None
+        if request.method in ("POST", "PUT", "PATCH"):
+            try:
+                raw_body = await request.body()
+                if raw_body:
+                    content_type = request.headers.get("content-type", "")
+                    if "application/json" in content_type:
+                        request_body = json.loads(raw_body)
+                    elif "multipart/form-data" not in content_type:
+                        # 非 multipart 且非 JSON，尝试当文本
+                        request_body = raw_body.decode("utf-8", errors="replace")[:500]
+            except Exception:
+                pass
 
-        logger.info(input_event)
+        if request_body is not None:
+            event["request_body"] = request_body
 
         # ── 调用 ──
+        response = None
+        error_msg = None
         try:
             response = await call_next(request)
             status_code = response.status_code
         except Exception as exc:
-            logger.error({
-                "request_id": input_event["request_id"],
-                "status_code": 500,
-                "duration_ms": round((time.monotonic() - start_time) * 1000, 2),
-                "error": f"{type(exc).__name__}: {exc}",
-            })
-            raise
+            status_code = 500
+            error_msg = f"{type(exc).__name__}: {exc}"
 
-        # ── 输出 ──
-        logger.info({
-            "request_id": input_event["request_id"],
-            "status_code": status_code,
-            "duration_ms": round((time.monotonic() - start_time) * 1000, 2),
-        })
+        # ── 读取响应体 ──
+        response_body = None
+        if response is not None and not isinstance(response, StreamingResponse):
+            content_type = response.headers.get("content-type", "")
+            if "application/json" in content_type:
+                try:
+                    body = b""
+                    async for chunk in response.body_iterator:
+                        if isinstance(chunk, str):
+                            body += chunk.encode("utf-8")
+                        else:
+                            body += chunk
+                    response_body = json.loads(body)
+                    # 重新构建响应（因为 body_iterator 已消费）
+                    response = Response(
+                        content=body,
+                        status_code=response.status_code,
+                        headers=dict(response.headers),
+                        media_type=response.media_type,
+                    )
+                except Exception:
+                    pass
+
+        # ── 合并输出 ──
+        event["status_code"] = status_code
+        event["duration_ms"] = round((time.monotonic() - start_time) * 1000, 2)
+
+        if error_msg:
+            event["error"] = error_msg
+
+        if response_body is not None:
+            event["response_body"] = response_body
+
+        # ── 一条 wide event ──
+        if status_code >= 500:
+            logger.error(event)
+        elif status_code >= 400:
+            logger.warning(event)
+        else:
+            logger.info(event)
+
+        if response is None:
+            raise RuntimeError(error_msg or "request failed with no response")
 
         return response
