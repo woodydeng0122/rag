@@ -1,3 +1,6 @@
+-- 扩容 schema_migrations.version 字段长度，支持更长的迁移文件名
+ALTER TABLE schema_migrations ALTER COLUMN version TYPE VARCHAR(64);
+
 -- 黄金数据集表新增评测字段
 ALTER TABLE golden_dataset
     ADD COLUMN IF NOT EXISTS retrieved_chunk_ids TEXT[] NOT NULL DEFAULT '{}',

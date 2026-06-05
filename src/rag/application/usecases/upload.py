@@ -21,7 +21,6 @@ class UploadUseCase:
         project_id: str,
         filename: str,
         file_content: bytes,
-        embedder_model: str = "",
         splitter_strategy: str = "section_heading",
         chunk_size: int = 500,
         chunk_overlap: int = 50,
@@ -36,7 +35,7 @@ class UploadUseCase:
         if filename.lower().endswith(".zip"):
             return await self._handle_zip(
                 file_content, docs_dir, upload_id, project_id,
-                embedder_model, splitter_strategy, chunk_size, chunk_overlap,
+                splitter_strategy, chunk_size, chunk_overlap,
                 splitter_min_chars, splitter_max_chars,
             )
         else:
@@ -57,7 +56,6 @@ class UploadUseCase:
                 file_type=ext.lstrip("."),
                 checksum=checksum,
                 status="uploaded",
-                embedder_model=embedder_model,
                 splitter_strategy=splitter_strategy,
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
@@ -73,7 +71,6 @@ class UploadUseCase:
         docs_dir: Path,
         upload_id: str,
         project_id: str,
-        embedder_model: str,
         splitter_strategy: str,
         chunk_size: int,
         chunk_overlap: int,
@@ -112,7 +109,6 @@ class UploadUseCase:
                     file_type=ext.lstrip("."),
                     checksum=checksum,
                     status="uploaded",
-                    embedder_model=embedder_model,
                     splitter_strategy=splitter_strategy,
                     chunk_size=chunk_size,
                     chunk_overlap=chunk_overlap,

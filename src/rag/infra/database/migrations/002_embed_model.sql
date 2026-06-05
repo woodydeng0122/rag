@@ -16,14 +16,9 @@ ALTER TABLE project ADD COLUMN IF NOT EXISTS embed_dimension INT NOT NULL DEFAUL
 -- 3. document 表删除 embedder_model 字段
 ALTER TABLE document DROP COLUMN IF EXISTS embedder_model;
 
--- 4. embedding 表向量列从 VECTOR(512) 改为 VECTOR（不指定维度）
--- pgvector 不支持 ALTER COLUMN 修改维度，需要重建列
-ALTER TABLE embedding DROP COLUMN IF EXISTS vector;
-ALTER TABLE embedding ADD COLUMN vector VECTOR NOT NULL;
-
--- 重建向量索引
-DROP INDEX IF EXISTS idx_embedding_vector;
-CREATE INDEX IF NOT EXISTS idx_embedding_vector ON embedding USING ivfflat (vector vector_cosine_ops) WITH (lists = 100);
+-- 4. embedding 表向量列保持 VECTOR(512) 不变
+-- pgvector 的 IVFFlat/HNSW 索引要求列有固定维度，不支持无维度 VECTOR 列建索引
+-- 维度校验由应用层负责：创建项目时 embed_dimension 必须与 embedding 表维度一致
 
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_project_embed_model_id ON project(embed_model_id);

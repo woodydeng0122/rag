@@ -10,7 +10,6 @@ router = APIRouter(prefix="/api", tags=["upload"])
 async def upload_documents(
     project_id: str,
     file: UploadFile = File(...),
-    embedder_model: str = Form("models/BAAI/bge-small-zh-v1.5"),
     splitter_strategy: str = Form("section_heading"),
     chunk_size: int = Form(500),
     chunk_overlap: int = Form(50),
@@ -26,7 +25,6 @@ async def upload_documents(
             project_id=project_id,
             filename=filename,
             file_content=file_content,
-            embedder_model=embedder_model,
             splitter_strategy=splitter_strategy,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,

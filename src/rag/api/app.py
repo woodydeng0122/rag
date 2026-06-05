@@ -8,6 +8,7 @@ from .routes import health_router, retrieve_router, ask_router, evaluate_router
 from .routes.project import router as project_router
 from .routes.upload import router as upload_router
 from .routes.document import router as document_router
+from .routes.embed_model import router as embed_model_router
 from .routes.golden_dataset import router as golden_dataset_router
 from .routes.profile import router as profile_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
@@ -74,5 +75,6 @@ app.include_router(evaluate_router)
 app.include_router(project_router)
 app.include_router(upload_router)
 app.include_router(document_router)
+app.include_router(embed_model_router)
 app.include_router(golden_dataset_router)
 app.include_router(profile_router)

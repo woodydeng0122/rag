@@ -8,7 +8,8 @@ from rag.infra.database.connection import get_pool
 class PgProjectRepository(ProjectRepositoryPort):
     """PostgreSQL 实现的项目仓储"""
 
-    _SELECT = """SELECT id, name, description, created_at, updated_at,
+    _SELECT = """SELECT id, name, description, embed_model_id, embed_dimension,
+                        created_at, updated_at,
                         eval_recall_at_10, eval_mrr, eval_answerable, eval_total,
                         eval_latency_avg_ms, evaluated_at
                  FROM project"""
@@ -17,13 +18,16 @@ class PgProjectRepository(ProjectRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """INSERT INTO project (name, description)
-                VALUES ($1, $2)
-                RETURNING id, name, description, created_at, updated_at,
+                """INSERT INTO project (name, description, embed_model_id, embed_dimension)
+                VALUES ($1, $2, $3, $4)
+                RETURNING id, name, description, embed_model_id, embed_dimension,
+                          created_at, updated_at,
                           eval_recall_at_10, eval_mrr, eval_answerable, eval_total,
                           eval_latency_avg_ms, evaluated_at""",
                 project.name,
                 project.description,
+                _to_uuid(project.embed_model_id) if project.embed_model_id else None,
+                project.embed_dimension,
             )
         return _row_to_project(row)
 
@@ -54,7 +58,8 @@ class PgProjectRepository(ProjectRepositoryPort):
                       eval_recall_at_10 = $3, eval_mrr = $4, eval_answerable = $5,
                       eval_total = $6, eval_latency_avg_ms = $7, evaluated_at = $8
                 WHERE id = $9
-                RETURNING id, name, description, created_at, updated_at,
+                RETURNING id, name, description, embed_model_id, embed_dimension,
+                          created_at, updated_at,
                           eval_recall_at_10, eval_mrr, eval_answerable, eval_total,
                           eval_latency_avg_ms, evaluated_at""",
                 project.name,
@@ -87,10 +92,13 @@ def _to_uuid(value: str) -> str:
 
 
 def _row_to_project(row) -> Project:
+    embed_model_id = row["embed_model_id"]
     return Project(
         id=str(row["id"]),
         name=row["name"],
         description=row["description"] or "",
+        embed_model_id=str(embed_model_id) if embed_model_id else "",
+        embed_dimension=row["embed_dimension"] or 512,
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         eval_recall_at_10=row["eval_recall_at_10"],

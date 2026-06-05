@@ -12,11 +12,11 @@ class PgDocumentRepository(DocumentRepositoryPort):
             row = await conn.fetchrow(
                 """INSERT INTO document (
                     project_id, filename, file_path, file_size, file_type,
-                    checksum, status, embedder_model, splitter_strategy,
+                    checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars
-                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                 RETURNING id, project_id, filename, file_path, file_size, file_type,
-                    checksum, status, embedder_model, splitter_strategy,
+                    checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at""",
                 _to_uuid(document.project_id),
@@ -26,7 +26,6 @@ class PgDocumentRepository(DocumentRepositoryPort):
                 document.file_type,
                 document.checksum,
                 document.status,
-                document.embedder_model,
                 document.splitter_strategy,
                 document.chunk_size,
                 document.chunk_overlap,
@@ -40,7 +39,7 @@ class PgDocumentRepository(DocumentRepositoryPort):
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, project_id, filename, file_path, file_size, file_type,
-                    checksum, status, embedder_model, splitter_strategy,
+                    checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at
                 FROM document WHERE id = $1""",
@@ -55,7 +54,7 @@ class PgDocumentRepository(DocumentRepositoryPort):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT id, project_id, filename, file_path, file_size, file_type,
-                    checksum, status, embedder_model, splitter_strategy,
+                    checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at
                 FROM document WHERE project_id = $1 ORDER BY created_at DESC""",
@@ -109,7 +108,6 @@ def _row_to_document(row) -> Document:
         file_type=row["file_type"],
         checksum=row["checksum"],
         status=row["status"],
-        embedder_model=row["embedder_model"],
         splitter_strategy=row["splitter_strategy"],
         chunk_size=row["chunk_size"],
         chunk_overlap=row["chunk_overlap"],
