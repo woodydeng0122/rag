@@ -1,3 +1,5 @@
+from rag.domain.ports.retriever import RetrieverPort
+from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.llm import LLMPort
 from rag.application.usecases.base_retrieve import BaseRetrieveUseCase
 from rag.application.results.ask_result import AskResult, ChunkResult
@@ -11,17 +13,16 @@ class AskUseCase(BaseRetrieveUseCase):
 
     def __init__(
         self,
-        retriever,
-        chunk_repo,
+        retriever: RetrieverPort,
+        chunk_repo: ChunkRepositoryPort,
         llm: LLMPort,
-        chunk_file: str,
     ):
-        super().__init__(retriever, chunk_repo, chunk_file)
+        super().__init__(retriever, chunk_repo)
         self.llm = llm
 
-    def execute(self, query: str, top_k: int = 3) -> AskResult:
+    async def execute(self, query: str, project_id: str, top_k: int = 3) -> AskResult:
         # 1. 检索并加载分块
-        retrieved = self._retrieve_chunks(query, top_k)
+        retrieved = await self._retrieve_chunks(query, project_id, top_k)
 
         # 2. 构建上下文和分块结果
         contexts = [c.content for c in retrieved]

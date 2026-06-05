@@ -1,19 +1,10 @@
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
-from rag.domain.entities.embed_model import EmbedModel
+from rag.domain.ports.model_scanner import ModelScannerPort, ScannedModel
 
 
-@dataclass
-class ScannedModel:
-    """扫描发现的模型信息"""
-    name: str
-    dimension: int
-    path: str
-
-
-class ModelScanner:
+class ModelScanner(ModelScannerPort):
     """扫描本地 models/ 目录，发现可用的 SentenceTransformer 模型"""
 
     def __init__(self, models_dir: str = "models"):
@@ -44,9 +35,21 @@ class ModelScanner:
                 name=name,
                 dimension=dimension,
                 path=str(model_dir),
+                metadata=config,
             ))
 
         return results
+
+    def read_config(self, model_name: str) -> dict | None:
+        """读取指定模型的 config.json，返回完整内容或 None"""
+        config_path = self._models_dir / model_name / "config.json"
+        if not config_path.exists():
+            return None
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return None
 
     def existing_model_names(self) -> set[str]:
         """返回 models/ 目录下已存在的模型名称集合"""

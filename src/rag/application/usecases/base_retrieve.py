@@ -13,16 +13,14 @@ class BaseRetrieveUseCase:
         self,
         retriever: RetrieverPort,
         chunk_repo: ChunkRepositoryPort,
-        chunk_file: str,
     ):
         self.retriever = retriever
         self.chunk_repo = chunk_repo
-        self._chunk_file = chunk_file
 
-    def _retrieve_chunks(self, query: str, top_k: int = 3) -> list[RetrievedChunk]:
+    async def _retrieve_chunks(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievedChunk]:
         """检索并加载分块内容 — 共享逻辑"""
-        results = self.retriever.retrieve(query, top_k=top_k)
-        chunks = self.chunk_repo.load(self._chunk_file)
+        results = await self.retriever.retrieve(query, project_id=project_id, top_k=top_k)
+        chunks = await self.chunk_repo.list_by_project(project_id, limit=10000)
         chunk_map = {c.id: c for c in chunks}
 
         retrieved = []

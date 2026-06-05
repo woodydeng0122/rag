@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from rag.api.schemas.project import CreateProjectRequest, UpdateProjectRequest, ProjectResponse
 from rag.domain.entities.project import Project
+from rag.domain.entities.embed_model import EmbedModel
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 async def _project_to_response(p: Project, container: Container) -> ProjectResponse:
     embed_model_name = ""
     if p.embed_model_id:
-        embed_model = await container.embed_model_repo.get_by_id(p.embed_model_id)
+        embed_model = await container.embed_model_usecase.get(p.embed_model_id)
         if embed_model:
             embed_model_name = embed_model.name
 
@@ -37,26 +38,14 @@ async def create_project(
     req: CreateProjectRequest,
     container: Container = Depends(get_container),
 ):
-    embed_model = await container.embed_model_repo.get_by_id(req.embed_model_id)
-    if embed_model is None:
-        raise HTTPException(status_code=400, detail="嵌入模型不存在")
-    if embed_model.status != "online":
-        raise HTTPException(status_code=400, detail=f"嵌入模型不可用: {embed_model.name} (status={embed_model.status})")
-
-    EMBEDDING_TABLE_DIMENSION = 512
-    if embed_model.dimension != EMBEDDING_TABLE_DIMENSION:
-        raise HTTPException(
-            status_code=400,
-            detail=f"模型维度 {embed_model.dimension} 与系统向量维度 {EMBEDDING_TABLE_DIMENSION} 不一致，当前仅支持 {EMBEDDING_TABLE_DIMENSION} 维模型",
+    try:
+        saved = await container.project_usecase.create(
+            name=req.name,
+            description=req.description,
+            embed_model_id=req.embed_model_id,
         )
-
-    project = Project(
-        name=req.name,
-        description=req.description,
-        embed_model_id=req.embed_model_id,
-        embed_dimension=embed_model.dimension,
-    )
-    saved = await container.project_repo.save(project)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return await _project_to_response(saved, container)
 
 
@@ -64,7 +53,7 @@ async def create_project(
 async def list_projects(
     container: Container = Depends(get_container),
 ):
-    projects = await container.project_repo.list()
+    projects = await container.project_usecase.list()
     return [await _project_to_response(p, container) for p in projects]
 
 
@@ -73,7 +62,7 @@ async def get_project(
     project_id: str,
     container: Container = Depends(get_container),
 ):
-    project = await container.project_repo.get_by_id(project_id)
+    project = await container.project_usecase.get(project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="项目不存在")
     return await _project_to_response(project, container)
@@ -85,13 +74,14 @@ async def update_project(
     req: UpdateProjectRequest,
     container: Container = Depends(get_container),
 ):
-    existing = await container.project_repo.get_by_id(project_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
-
-    existing.name = req.name
-    existing.description = req.description
-    updated = await container.project_repo.update(existing)
+    try:
+        updated = await container.project_usecase.update(
+            project_id=project_id,
+            name=req.name,
+            description=req.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return await _project_to_response(updated, container)
 
 
@@ -100,11 +90,10 @@ async def delete_project(
     project_id: str,
     container: Container = Depends(get_container),
 ):
-    existing = await container.project_repo.get_by_id(project_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="项目不存在")
-
-    deleted = await container.project_repo.delete(project_id)
+    try:
+        deleted = await container.project_usecase.delete(project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     if not deleted:
         raise HTTPException(status_code=500, detail="删除失败")
     return {"detail": "删除成功"}

@@ -1,6 +1,6 @@
 from rag.domain.entities.embed_model import EmbedModel
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
-from rag.infra.embedder.model_scanner import ModelScanner
+from rag.domain.ports.model_scanner import ModelScannerPort
 
 
 class ScanEmbedModelsUseCase:
@@ -9,7 +9,7 @@ class ScanEmbedModelsUseCase:
     def __init__(
         self,
         embed_model_repo: EmbedModelRepositoryPort,
-        model_scanner: ModelScanner,
+        model_scanner: ModelScannerPort,
     ):
         self._repo = embed_model_repo
         self._scanner = model_scanner
@@ -25,6 +25,7 @@ class ScanEmbedModelsUseCase:
                 name=s.name,
                 dimension=s.dimension,
                 status="online",
+                metadata=s.metadata,
             )
             await self._repo.save(model)
 

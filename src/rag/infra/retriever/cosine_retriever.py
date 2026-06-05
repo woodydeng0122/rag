@@ -1,8 +1,8 @@
 import numpy as np
-from rag.domain.entities.embedding import Embedding
 from rag.domain.entities.retrieval_result import RetrievalResult
-from rag.domain.ports.embedder import EmbedderPort
+from rag.domain.ports.embedder_pool import EmbedderPoolPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
+from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.retriever import RetrieverPort
 
 
@@ -11,25 +11,44 @@ class CosineRetriever(RetrieverPort):
 
     def __init__(
         self,
-        embedder: EmbedderPort,
+        embedder_pool: EmbedderPoolPort,
         embedding_repo: EmbeddingRepositoryPort,
-        embedding_file: str,
+        embed_model_repo: EmbedModelRepositoryPort,
     ):
-        self._embedder = embedder
+        self._embedder_pool = embedder_pool
         self._embedding_repo = embedding_repo
-        self._embedding_file = embedding_file
+        self._embed_model_repo = embed_model_repo
 
-    def retrieve(self, query: str, top_k: int = 3) -> list[RetrievalResult]:
-        # 加载嵌入
-        embeddings = self._embedding_repo.load(self._embedding_file)
+    async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievalResult]:
+        # 从 PG 按项目加载嵌入
+        embeddings = await self._embedding_repo.list_by_project(project_id)
         if not embeddings:
             return []
+
+        # 获取项目关联的嵌入模型名（用于选择正确的 embedder）
+        # 从第一条嵌入记录获取 embedder_model 字段
+        embedder_model_name = ""
+        if embeddings:
+            # 尝试从 embedding 表获取模型名
+            pool = self._embedding_repo
+            # 简化：使用 embed_model_repo 查找所有在线模型，取第一个
+            # TODO: 后续可通过 project 表的 embed_model_id 精确查找
+            models = await self._embed_model_repo.get_all()
+            online_models = [m for m in models if m.status == "online"]
+            if online_models:
+                embedder_model_name = online_models[0].name
+
+        if not embedder_model_name:
+            return []
+
+        # 获取对应的 embedder
+        embedder = self._embedder_pool.get(embedder_model_name)
 
         # 构建嵌入矩阵
         embeddings_array = np.array([e.vector for e in embeddings])
 
         # 查询嵌入
-        query_vectors = self._embedder.embed(query)
+        query_vectors = embedder.embed(query)
         query_emb = np.array(query_vectors[0])
 
         # 计算余弦相似度

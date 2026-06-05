@@ -27,12 +27,10 @@ async def startup() -> None:
     # 2. 校验迁移状态（不执行迁移，仅检查）
     pending = await check_migrations()
     if pending:
-        logger.warning(
-            "数据库迁移未完成！待执行: %s。请运行: python -m rag migrate",
-            ", ".join(pending),
+        raise RuntimeError(
+            f"数据库迁移未完成！待执行: {', '.join(pending)}。请运行: python -m rag migrate"
         )
-    else:
-        logger.info("数据库迁移校验通过")
+    logger.info("数据库迁移校验通过")
 
     # 3. 扫描本地嵌入模型
     container = build_container(settings)

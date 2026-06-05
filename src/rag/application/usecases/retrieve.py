@@ -8,6 +8,6 @@ class RetrieveUseCase(BaseRetrieveUseCase):
     只依赖端口接口，不知道具体实现。
     """
 
-    def execute(self, query: str, top_k: int = 3) -> RetrieveResult:
-        retrieved = self._retrieve_chunks(query, top_k)
+    async def execute(self, query: str, project_id: str, top_k: int = 3) -> RetrieveResult:
+        retrieved = await self._retrieve_chunks(query, project_id, top_k)
         return RetrieveResult(chunks=retrieved)

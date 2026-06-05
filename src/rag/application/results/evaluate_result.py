@@ -8,10 +8,6 @@ class EvaluateResult:
     recall: dict
     mrr: float
     failure: list[str]
-    # 配置元数据
-    embedding_file: str = ""
-    golden_file: str = ""
-    embedder_model: str = ""
     # 运行时元数据
     time: str = ""
     latency_total_ms: float = 0.0

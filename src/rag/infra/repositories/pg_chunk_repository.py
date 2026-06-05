@@ -6,12 +6,6 @@ from rag.infra.database.connection import get_pool
 class PgChunkRepository(ChunkRepositoryPort):
     """PostgreSQL 实现的分块仓储"""
 
-    def save(self, chunks: list[Chunk], filepath: str) -> None:
-        raise NotImplementedError("PG 仓储不支持 JSONL save，请使用 save_batch")
-
-    def load(self, filepath: str) -> list[Chunk]:
-        raise NotImplementedError("PG 仓储不支持 JSONL load，请使用 list_by_document")
-
     async def save_batch(self, chunks: list[Chunk], document_id: str = "") -> None:
         if not chunks:
             return
@@ -34,16 +28,7 @@ class PgChunkRepository(ChunkRepositoryPort):
                 "SELECT id, document_id, content, index, heading, source_file FROM chunk WHERE document_id = $1 ORDER BY index",
                 _to_uuid(document_id),
             )
-        return [
-            Chunk(
-                id=row["id"],
-                content=row["content"],
-                index=row["index"],
-                source_file=row["source_file"],
-                heading=row["heading"],
-            )
-            for row in rows
-        ]
+        return [_row_to_chunk(row) for row in rows]
 
     async def list_by_project(self, project_id: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
         """按项目查询分块（跨文档），支持分页"""

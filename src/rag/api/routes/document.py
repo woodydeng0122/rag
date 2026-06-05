@@ -1,14 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.document import (
-    DocumentResponse, ProcessDocumentResponse, BatchProcessRequest,
-    BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse,
-    SourceContentResponse, EmbeddingResponse,
-)
+from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
 
-router = APIRouter(prefix="/api/projects/{project_id}", tags=["documents"])
+router = APIRouter(prefix="/api", tags=["documents"])
 
 
 def _doc_to_response(d) -> DocumentResponse:
@@ -21,6 +17,7 @@ def _doc_to_response(d) -> DocumentResponse:
         file_type=d.file_type,
         checksum=d.checksum,
         status=d.status,
+        embedder_model=d.embedder_model,
         splitter_strategy=d.splitter_strategy,
         chunk_size=d.chunk_size,
         chunk_overlap=d.chunk_overlap,
@@ -33,18 +30,8 @@ def _doc_to_response(d) -> DocumentResponse:
     )
 
 
-@router.get("/documents", response_model=list[DocumentResponse])
-async def list_documents(
-    project_id: str,
-    container: Container = Depends(get_container),
-):
-    documents = await container.document_repo.list_by_project(project_id)
-    return [_doc_to_response(d) for d in documents]
-
-
 @router.post("/documents/{document_id}/process", response_model=ProcessDocumentResponse)
 async def process_document(
-    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
@@ -63,17 +50,24 @@ async def process_document(
     )
 
 
+@router.get("/projects/{project_id}/documents", response_model=list[DocumentResponse])
+async def list_documents(
+    project_id: str,
+    container: Container = Depends(get_container),
+):
+    documents = await container.document_usecase.list_by_project(project_id)
+    return [_doc_to_response(d) for d in documents]
+
+
 @router.delete("/documents/{document_id}")
 async def delete_document(
-    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
-    existing = await container.document_repo.get_by_id(document_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="文档不存在")
-
-    deleted = await container.document_repo.delete(document_id)
+    try:
+        deleted = await container.document_usecase.delete(document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     if not deleted:
         raise HTTPException(status_code=500, detail="删除失败")
     return {"detail": "删除成功"}
@@ -81,16 +75,16 @@ async def delete_document(
 
 @router.get("/documents/{document_id}/chunks", response_model=ChunkListResponse)
 async def list_chunks(
-    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
     """获取文档的分块列表"""
-    doc = await container.document_repo.get_by_id(document_id)
-    if doc is None:
-        raise HTTPException(status_code=404, detail="文档不存在")
+    try:
+        chunks = await container.document_usecase.list_chunks(document_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
-    chunks = await container.chunk_repo.list_by_document(document_id)
+    doc = await container.document_usecase.get(document_id)
     return ChunkListResponse(
         document_id=document_id,
         total=len(chunks),
@@ -101,7 +95,7 @@ async def list_chunks(
                 heading=c.heading,
                 content=c.content,
                 source_file=c.source_file,
-                file_type=doc.file_type,
+                file_type=doc.file_type if doc else "",
             )
             for c in chunks
         ],
@@ -110,14 +104,13 @@ async def list_chunks(
 
 @router.get("/documents/{document_id}/source", response_model=SourceContentResponse)
 async def get_source_content(
-    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
     """获取文档源文件内容（仅支持文本类型）"""
     logger.info("get_source_content called", extra={"document_id": document_id})
 
-    doc = await container.document_repo.get_by_id(document_id)
+    doc = await container.document_usecase.get(document_id)
     if doc is None:
         logger.warning("document not found", extra={"document_id": document_id})
         raise HTTPException(status_code=404, detail="文档不存在")
@@ -161,12 +154,11 @@ async def get_source_content(
 
 @router.get("/chunks/{chunk_id}/embedding", response_model=EmbeddingResponse)
 async def get_chunk_embedding(
-    project_id: str,
     chunk_id: str,
     container: Container = Depends(get_container),
 ):
     """获取分块的 embedding 向量"""
-    embedding = await container.embedding_repo.get_by_chunk_id(chunk_id)
+    embedding = await container.document_usecase.get_embedding(chunk_id)
     if embedding is None:
         raise HTTPException(status_code=404, detail="该分块暂无 embedding 数据")
     return EmbeddingResponse(
@@ -176,8 +168,8 @@ async def get_chunk_embedding(
     )
 
 
-@router.get("/chunks/search", response_model=ChunkListResponse)
-async def search_chunks(
+@router.get("/projects/{project_id}/chunks/search", response_model=ChunkListResponse)
+async def search_chunks_by_project(
     project_id: str,
     q: str = "",
     limit: int = 20,
@@ -186,9 +178,9 @@ async def search_chunks(
 ):
     """按项目搜索分块内容，支持分页"""
     if q:
-        chunks = await container.chunk_repo.search_by_project(project_id, q, limit, offset)
+        chunks = await container.document_usecase.search_chunks_by_project(project_id, q, limit, offset)
     else:
-        chunks = await container.chunk_repo.list_by_project(project_id, limit, offset)
+        chunks = await container.document_usecase.list_chunks_by_project(project_id, limit, offset)
     return ChunkListResponse(
         document_id="",
         total=len(chunks),
@@ -207,7 +199,6 @@ async def search_chunks(
 
 @router.post("/documents/batch-process", response_model=BatchProcessResponse)
 async def batch_process_documents(
-    project_id: str,
     req: BatchProcessRequest,
     container: Container = Depends(get_container),
 ):

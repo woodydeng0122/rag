@@ -13,4 +13,4 @@ async def create_retrieval(
     container: Container = Depends(get_container),
 ) -> RetrieveResponse:
     """根据查询检索相关文档分块"""
-    return container.retrieve.execute(query=req.query, top_k=req.top_k)
+    return await container.retrieve.execute(query=req.query, project_id=project_id, top_k=req.top_k)

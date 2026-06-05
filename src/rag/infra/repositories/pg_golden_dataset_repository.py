@@ -1,8 +1,11 @@
-from datetime import datetime
+import json
 
 from rag.domain.entities.golden_record import GoldenRecord
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.infra.database.connection import get_pool
+
+_SELECT = """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
+                     retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at, metadata"""
 
 
 class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
@@ -12,14 +15,14 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """INSERT INTO golden_dataset (project_id, query, ground_truth_chunks, reference_answer)
-                VALUES ($1, $2, $3, $4)
-                RETURNING id, project_id, query, ground_truth_chunks, reference_answer,
-                          retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at""",
+                f"""INSERT INTO golden_dataset (project_id, query, ground_truth_chunks, reference_answer, metadata)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING {_SELECT.replace('SELECT ', '')}""",
                 _to_uuid(record.project_id),
                 record.query,
                 record.ground_truth_chunks,
                 record.reference_answer,
+                json.dumps(record.metadata) if record.metadata else "{}",
             )
         return _row_to_record(row)
 
@@ -27,9 +30,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
-                          retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at
-                   FROM golden_dataset WHERE id = $1""",
+                f"{_SELECT} FROM golden_dataset WHERE id = $1",
                 _to_uuid(record_id),
             )
         if row is None:
@@ -40,10 +41,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
-                          retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at
-                   FROM golden_dataset WHERE project_id = $1
-                   ORDER BY created_at DESC""",
+                f"{_SELECT} FROM golden_dataset WHERE project_id = $1 ORDER BY created_at DESC",
                 _to_uuid(project_id),
             )
         return [_row_to_record(row) for row in rows]
@@ -52,12 +50,12 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """UPDATE golden_dataset
+                f"""UPDATE golden_dataset
                    SET query = $1, ground_truth_chunks = $2, reference_answer = $3,
-                       retrieved_chunk_ids = $4, is_hit = $5, hit_rank = $6, evaluated_at = $7
-                   WHERE id = $8
-                   RETURNING id, project_id, query, ground_truth_chunks, reference_answer,
-                             retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at""",
+                       retrieved_chunk_ids = $4, is_hit = $5, hit_rank = $6, evaluated_at = $7,
+                       metadata = $8
+                   WHERE id = $9
+                   RETURNING {_SELECT.replace('SELECT ', '')}""",
                 record.query,
                 record.ground_truth_chunks,
                 record.reference_answer,
@@ -65,6 +63,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
                 record.is_hit,
                 record.hit_rank,
                 record.evaluated_at,
+                json.dumps(record.metadata) if record.metadata else "{}",
                 _to_uuid(record.id),
             )
         if row is None:
@@ -86,6 +85,14 @@ def _to_uuid(value: str) -> str:
 
 
 def _row_to_record(row) -> GoldenRecord:
+    metadata_raw = row["metadata"]
+    if isinstance(metadata_raw, str):
+        metadata = json.loads(metadata_raw)
+    elif isinstance(metadata_raw, dict):
+        metadata = metadata_raw
+    else:
+        metadata = {}
+
     return GoldenRecord(
         id=str(row["id"]),
         project_id=str(row["project_id"]),
@@ -97,4 +104,5 @@ def _row_to_record(row) -> GoldenRecord:
         hit_rank=row["hit_rank"],
         evaluated_at=row["evaluated_at"],
         created_at=row["created_at"],
+        metadata=metadata,
     )

@@ -1,44 +1,57 @@
 
 from rag.application.usecases.ask import AskUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
-from rag.shared.json_utils import json_from_jsonl, json_append
 
 
-def cmd_ask(args, ask: AskUseCase, golden_file: str):
+def cmd_ask(args, ask: AskUseCase, project_id: str):
     """提问命令"""
-    query = args.query or json_from_jsonl(golden_file)[args.index]["query"]
+    query = args.query
+    if not query:
+        raise ValueError("请提供查询内容: -q/--query")
 
     print(f"======================= 提问 =======================")
     print(query)
 
-    result = ask.execute(query=query, top_k=args.top_k)
+    import asyncio
+    result = asyncio.run(ask.execute(query=query, project_id=project_id, top_k=args.top_k))
 
     print(f"======================= 回答 =======================")
     print(result.answer)
 
 
-def cmd_eval(args, evaluate: EvaluateUseCase, golden_file: str):
+def cmd_eval(args, evaluate: EvaluateUseCase, project_id: str):
     """评测命令"""
-    raw_records = json_from_jsonl(golden_file)
-    records = [
-        r for r in raw_records if r.get("ground_truth_chunks")
-    ]
+    import asyncio
+
+    # 从 DB 获取项目的黄金记录 ID
+    from rag.bootstrap.container import get_container
+    container = get_container()
+    records = asyncio.run(container.golden_dataset_usecase.list_by_project(project_id))
+    golden_ids = [r.id for r in records if r.ground_truth_chunks]
+
+    if not golden_ids:
+        print("该项目没有黄金记录，无法评测。")
+        return
 
     k_list = args.k or [10]
-    result = evaluate.execute(records, k_list=k_list)
+    result = asyncio.run(evaluate.execute_by_project(
+        project_id=project_id,
+        golden_ids=golden_ids,
+        k_list=k_list,
+    ))
 
-    json_append(args.output, {
-        "time": result.time,
-        "embedding_file": result.embedding_file,
-        "golden_file": result.golden_file,
-        "embedder_model": result.embedder_model,
-        "answerable_count": result.answerable_count,
-        "recall": result.recall,
-        "mrr": result.mrr,
-        "latency_total_ms": result.latency_total_ms,
-        "latency_avg_ms": result.latency_avg_ms,
-        "failure": result.failure,
-    })
+    import json
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump({
+            "time": result.time,
+            "answerable_count": result.answerable_count,
+            "recall": result.recall,
+            "mrr": result.mrr,
+            "latency_total_ms": result.latency_total_ms,
+            "latency_avg_ms": result.latency_avg_ms,
+            "failure": result.failure,
+        }, f, ensure_ascii=False, indent=2)
+    print(f"评测结果已保存到 {args.output}")
 
 
 async def cmd_migrate():

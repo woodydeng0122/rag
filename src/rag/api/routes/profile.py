@@ -18,7 +18,7 @@ def _profile_to_response(p: Profile) -> ProfileResponse:
 async def get_profile(
     container: Container = Depends(get_container),
 ):
-    profile = await container.profile_repo.get()
+    profile = await container.profile_usecase.get()
     return _profile_to_response(profile)
 
 
@@ -27,10 +27,8 @@ async def update_profile(
     req: UpdateProfileRequest,
     container: Container = Depends(get_container),
 ):
-    if req.active_project_id is not None:
-        project = await container.project_repo.get_by_id(req.active_project_id)
-        if project is None:
-            raise HTTPException(status_code=404, detail="项目不存在")
-
-    profile = await container.profile_repo.upsert(req.active_project_id)
+    try:
+        profile = await container.profile_usecase.update(req.active_project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return _profile_to_response(profile)

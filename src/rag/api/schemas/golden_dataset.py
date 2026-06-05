@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
 
 
 class CreateGoldenDatasetRequest(BaseModel):
@@ -25,3 +24,15 @@ class GoldenDatasetResponse(BaseModel):
     hit_rank: int | None = None
     evaluated_at: str | None = None
     created_at: str = ""
+    metadata: dict = Field(default_factory=dict)
+
+
+class SkippedRecordResponse(BaseModel):
+    row: int
+    reason: str
+
+
+class ImportGoldenDatasetResponse(BaseModel):
+    success_count: int = 0
+    skipped_count: int = 0
+    skipped: list[SkippedRecordResponse] = Field(default_factory=list)

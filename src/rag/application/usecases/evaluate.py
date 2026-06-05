@@ -17,16 +17,10 @@ class EvaluateUseCase:
         retriever: RetrieverPort,
         golden_repo: GoldenDatasetRepositoryPort,
         project_repo: ProjectRepositoryPort,
-        embedding_file: str = "",
-        golden_file: str = "",
-        embedder_model: str = "",
     ):
         self.retriever = retriever
         self.golden_repo = golden_repo
         self.project_repo = project_repo
-        self._embedding_file = embedding_file
-        self._golden_file = golden_file
-        self._embedder_model = embedder_model
 
     async def execute_by_project(
         self,
@@ -56,7 +50,7 @@ class EvaluateUseCase:
 
         # 检索并更新每条记录
         for record in records:
-            results = self.retriever.retrieve(record.query, top_k=max_k)
+            results = await self.retriever.retrieve(record.query, project_id=project_id, top_k=max_k)
             retrieved_ids = [r.chunk_id for r in results]
             record.set_retrieved(retrieved_ids)
 
@@ -99,53 +93,7 @@ class EvaluateUseCase:
             recall=recall,
             mrr=mrr,
             failure=failure_queries,
-            embedding_file=self._embedding_file,
-            golden_file=self._golden_file,
-            embedder_model=self._embedder_model,
             time=datetime.now().strftime("%Y%m%d %H:%M"),
             latency_total_ms=round(total_elapsed, 2),
             latency_avg_ms=round(total_elapsed / len(records), 2) if records else 0,
-        )
-
-    def execute(
-        self,
-        records: list[dict],
-        k_list: list[int] | None = None,
-    ) -> EvaluateResult:
-        """兼容旧接口 — 前端传 records 数组"""
-        if k_list is None:
-            k_list = [10]
-        max_k = max(k_list)
-
-        golden_records = [
-            GoldenRecord(
-                query=r["query"],
-                ground_truth_chunks=r.get("ground_truth_chunks", []),
-                reference_answer=r.get("reference_answer", ""),
-            )
-            for r in records if r.get("ground_truth_chunks")
-        ]
-
-        start = _time.perf_counter()
-
-        for record in golden_records:
-            results = self.retriever.retrieve(record.query, top_k=max_k)
-            record.set_retrieved([r.chunk_id for r in results])
-
-        recall, failure_queries = recall_at_k(golden_records, k_list)
-        mrr = calc_mrr(golden_records)
-
-        total_elapsed = (_time.perf_counter() - start) * 1000
-
-        return EvaluateResult(
-            answerable_count=len(golden_records),
-            recall=recall,
-            mrr=mrr,
-            failure=failure_queries,
-            embedding_file=self._embedding_file,
-            golden_file=self._golden_file,
-            embedder_model=self._embedder_model,
-            time=datetime.now().strftime("%Y%m%d %H:%M"),
-            latency_total_ms=round(total_elapsed, 2),
-            latency_avg_ms=round(total_elapsed / len(golden_records), 2) if golden_records else 0,
         )

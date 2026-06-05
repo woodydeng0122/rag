@@ -16,6 +16,7 @@ class GoldenRecord:
     hit_rank: int | None = None
     evaluated_at: datetime | None = None
     created_at: datetime | None = None
+    metadata: dict = field(default_factory=dict)
 
     def set_retrieved(self, ids: list[str]) -> None:
         """设置检索结果 ID 列表"""

@@ -1,10 +1,12 @@
 import hashlib
+import io
 import zipfile
 from pathlib import Path
 from uuid import uuid4
 
 from rag.domain.entities.document import Document
 from rag.domain.ports.document_repository import DocumentRepositoryPort
+from rag.domain.ports.file_storage import FileStoragePort
 
 
 ALLOWED_EXTENSIONS = {".md", ".txt", ".pdf"}
@@ -13,8 +15,13 @@ ALLOWED_EXTENSIONS = {".md", ".txt", ".pdf"}
 class UploadUseCase:
     """上传用例 — 接收文件/zip，存储到 docs/{upload_id}/，创建 document 记录"""
 
-    def __init__(self, document_repo: DocumentRepositoryPort):
+    def __init__(
+        self,
+        document_repo: DocumentRepositoryPort,
+        file_storage: FileStoragePort,
+    ):
         self._document_repo = document_repo
+        self._file_storage = file_storage
 
     async def execute(
         self,
@@ -28,8 +35,8 @@ class UploadUseCase:
         splitter_max_chars: int = 2000,
     ) -> list[Document]:
         upload_id = str(uuid4())
-        docs_dir = Path("docs") / upload_id
-        docs_dir.mkdir(parents=True, exist_ok=True)
+        docs_dir = f"docs/{upload_id}"
+        self._file_storage.mkdir(docs_dir)
 
         # 判断是否为 zip
         if filename.lower().endswith(".zip"):
@@ -44,14 +51,14 @@ class UploadUseCase:
             if ext not in ALLOWED_EXTENSIONS:
                 raise ValueError(f"不支持的文件类型: {ext}，仅支持 {ALLOWED_EXTENSIONS}")
 
-            file_path = docs_dir / filename
-            file_path.write_bytes(file_content)
+            file_path = f"{docs_dir}/{filename}"
+            self._file_storage.write_bytes(file_path, file_content)
             checksum = hashlib.sha256(file_content).hexdigest()
 
             doc = Document(
                 project_id=project_id,
                 filename=filename,
-                file_path=str(file_path),
+                file_path=file_path,
                 file_size=len(file_content),
                 file_type=ext.lstrip("."),
                 checksum=checksum,
@@ -68,7 +75,7 @@ class UploadUseCase:
     async def _handle_zip(
         self,
         file_content: bytes,
-        docs_dir: Path,
+        docs_dir: str,
         upload_id: str,
         project_id: str,
         splitter_strategy: str,
@@ -78,8 +85,6 @@ class UploadUseCase:
         splitter_max_chars: int,
     ) -> list[Document]:
         """解压 zip 并为每个支持的文件创建 document 记录"""
-        import io
-
         zip_buffer = io.BytesIO(file_content)
         documents = []
 
@@ -95,16 +100,17 @@ class UploadUseCase:
 
                 # 保持目录结构解压
                 entry_content = zf.read(entry)
-                target_path = docs_dir / entry
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                target_path.write_bytes(entry_content)
+                target_path = f"{docs_dir}/{entry}"
+                parent_dir = str(Path(target_path).parent)
+                self._file_storage.mkdir(parent_dir)
+                self._file_storage.write_bytes(target_path, entry_content)
 
                 checksum = hashlib.sha256(entry_content).hexdigest()
 
                 doc = Document(
                     project_id=project_id,
                     filename=Path(entry).name,
-                    file_path=str(target_path),
+                    file_path=target_path,
                     file_size=len(entry_content),
                     file_type=ext.lstrip("."),
                     checksum=checksum,

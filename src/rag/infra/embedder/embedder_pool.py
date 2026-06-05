@@ -1,14 +1,20 @@
 import threading
 from collections import OrderedDict
+from typing import Callable
 
 from rag.domain.ports.embedder import EmbedderPort
-from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
+from rag.domain.ports.embedder_pool import EmbedderPoolPort
 
 
-class EmbedderPool:
+class EmbedderPool(EmbedderPoolPort):
     """Embedder 实例缓存池 — 按模型名缓存，LRU 淘汰"""
 
-    def __init__(self, max_size: int = 3):
+    def __init__(
+        self,
+        factory: Callable[[str], EmbedderPort],
+        max_size: int = 3,
+    ):
+        self._factory = factory
         self._max_size = max_size
         self._pool: OrderedDict[str, EmbedderPort] = OrderedDict()
         self._lock = threading.Lock()
@@ -20,7 +26,7 @@ class EmbedderPool:
                 self._pool.move_to_end(model_name)
                 return self._pool[model_name]
 
-            embedder = SentenceTransformerEmbedder(model_name)
+            embedder = self._factory(model_name)
 
             if len(self._pool) >= self._max_size:
                 self._pool.popitem(last=False)

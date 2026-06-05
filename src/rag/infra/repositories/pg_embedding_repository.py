@@ -6,12 +6,6 @@ from rag.infra.database.connection import get_pool
 class PgEmbeddingRepository(EmbeddingRepositoryPort):
     """PostgreSQL + pgvector 实现的嵌入仓储"""
 
-    def save(self, embeddings: list[Embedding], filepath: str) -> None:
-        raise NotImplementedError("PG 仓储不支持 JSONL save，请使用 save_batch")
-
-    def load(self, filepath: str) -> list[Embedding]:
-        raise NotImplementedError("PG 仓储不支持 JSONL load，请使用数据库查询")
-
     async def save_batch(self, embeddings: list[Embedding], embedder_model: str = "") -> None:
         if not embeddings:
             return
@@ -40,7 +34,27 @@ class PgEmbeddingRepository(EmbeddingRepositoryPort):
         vector = [float(v) for v in vector_str.strip("[]").split(",")]
         return Embedding(chunk_id=row["chunk_id"], vector=vector)
 
+    async def list_by_project(self, project_id: str) -> list[Embedding]:
+        """按项目查询所有嵌入向量"""
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT e.chunk_id, e.vector
+                   FROM embedding e
+                   JOIN chunk c ON e.chunk_id = c.id
+                   JOIN document d ON c.document_id = d.id
+                   WHERE d.project_id = $1""",
+                project_id,
+            )
+        return [_row_to_embedding(row) for row in rows]
+
 
 def _vector_to_str(vector: list[float]) -> str:
     """将向量列表转换为 pgvector 接受的字符串格式"""
     return "[" + ",".join(str(v) for v in vector) + "]"
+
+
+def _row_to_embedding(row) -> Embedding:
+    vector_str = row["vector"]
+    vector = [float(v) for v in vector_str.strip("[]").split(",")]
+    return Embedding(chunk_id=row["chunk_id"], vector=vector)

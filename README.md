@@ -1,17 +1,11 @@
 ## 项目启动
 
-1. 启动项目
-```bash
-python -m app.main
+```
+# 执行数据库迁移（部署前或开发时手动运行）
+python -m rag migrate
 
-
-### baseline metrics
-
-```text
-topk recall
-answer correctness
-latency
-cost
+# 启动 API 服务（不再自动迁移，仅校验）
+python -m rag api
 ```
 
 ### embedding 模型

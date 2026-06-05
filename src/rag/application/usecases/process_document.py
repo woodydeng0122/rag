@@ -7,7 +7,7 @@ from rag.domain.ports.file_loader import FileLoaderPort
 from rag.domain.ports.splitter import SplitterPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
-from rag.infra.embedder.embedder_pool import EmbedderPool
+from rag.domain.ports.embedder_pool import EmbedderPoolPort
 
 
 class ProcessDocumentUseCase:
@@ -22,7 +22,7 @@ class ProcessDocumentUseCase:
         embed_model_repo: EmbedModelRepositoryPort,
         loader: FileLoaderPort,
         splitter: SplitterPort,
-        embedder_pool: EmbedderPool,
+        embedder_pool: EmbedderPoolPort,
     ):
         self._document_repo = document_repo
         self._chunk_repo = chunk_repo

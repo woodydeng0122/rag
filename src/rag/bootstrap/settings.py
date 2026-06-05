@@ -8,19 +8,10 @@ load_dotenv()
 @dataclass
 class Settings:
     """应用配置 — 从环境变量读取，提供默认值"""
-    # 嵌入模型
-    embedder_model: str = "models/BAAI/bge-small-zh-v1.5"
-
     # LLM
     dashscope_api_key: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_model: str = "qwen3.6-plus-2026-04-02"
-
-    # 文件路径
-    doc_dir: str = "docs/fast-api/docs"
-    chunk_file: str = "docs/fast-api/chunks_sh.jsonl"
-    embedding_file: str = "docs/fast-api/chunk_embeddings.jsonl"
-    golden_file: str = "docs/fast-api/one_by_one.jsonl"
 
     # 分块参数
     splitter_min_chars: int = 200

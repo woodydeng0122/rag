@@ -23,3 +23,9 @@ class EmbedModelRepositoryPort(ABC):
 
     @abstractmethod
     async def update_status(self, model_id: str, status: str) -> None: ...
+
+    @abstractmethod
+    async def update(self, model: EmbedModel) -> EmbedModel: ...
+
+    @abstractmethod
+    async def delete(self, model_id: str) -> bool: ...

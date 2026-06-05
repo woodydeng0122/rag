@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -10,5 +10,6 @@ class EmbedModel:
     dimension: int = 0
     description: str = ""
     status: str = "offline"  # online / offline
+    metadata: dict = field(default_factory=dict)  # config.json 完整内容
     created_at: datetime | None = None
     updated_at: datetime | None = None
