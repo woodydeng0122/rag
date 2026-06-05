@@ -33,7 +33,7 @@ def main():
     p_eval.add_argument("-o", "--output", type=str, default="./eval_result.json", help="结果输出文件")
 
     args = parser.parse_args()
-    settings = Settings()
+    settings = Settings.from_env()
     container = build_container(settings)
 
     if args.command == "api":
