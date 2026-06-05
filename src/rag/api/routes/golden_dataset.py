@@ -7,7 +7,7 @@ from rag.api.schemas.golden_dataset import (
 )
 from rag.bootstrap.container import Container, get_container
 
-router = APIRouter(prefix="/api", tags=["golden-dataset"])
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["golden-datasets"])
 
 
 def _record_to_response(r) -> GoldenDatasetResponse:
@@ -25,8 +25,8 @@ def _record_to_response(r) -> GoldenDatasetResponse:
     )
 
 
-@router.get("/projects/{project_id}/golden-dataset", response_model=list[GoldenDatasetResponse])
-async def list_golden_dataset(
+@router.get("/golden-datasets", response_model=list[GoldenDatasetResponse])
+async def list_golden_datasets(
     project_id: str,
     container: Container = Depends(get_container),
 ):
@@ -34,7 +34,7 @@ async def list_golden_dataset(
     return [_record_to_response(r) for r in records]
 
 
-@router.post("/projects/{project_id}/golden-dataset", response_model=GoldenDatasetResponse)
+@router.post("/golden-datasets", response_model=GoldenDatasetResponse)
 async def create_golden_dataset(
     project_id: str,
     req: CreateGoldenDatasetRequest,
@@ -49,8 +49,9 @@ async def create_golden_dataset(
     return _record_to_response(record)
 
 
-@router.put("/golden-dataset/{record_id}", response_model=GoldenDatasetResponse)
+@router.put("/golden-datasets/{record_id}", response_model=GoldenDatasetResponse)
 async def update_golden_dataset(
+    project_id: str,
     record_id: str,
     req: UpdateGoldenDatasetRequest,
     container: Container = Depends(get_container),
@@ -67,8 +68,9 @@ async def update_golden_dataset(
     return _record_to_response(record)
 
 
-@router.delete("/golden-dataset/{record_id}")
+@router.delete("/golden-datasets/{record_id}")
 async def delete_golden_dataset(
+    project_id: str,
     record_id: str,
     container: Container = Depends(get_container),
 ):

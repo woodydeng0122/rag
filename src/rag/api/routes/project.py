@@ -37,14 +37,12 @@ async def create_project(
     req: CreateProjectRequest,
     container: Container = Depends(get_container),
 ):
-    # 校验嵌入模型
     embed_model = await container.embed_model_repo.get_by_id(req.embed_model_id)
     if embed_model is None:
         raise HTTPException(status_code=400, detail="嵌入模型不存在")
     if embed_model.status != "online":
         raise HTTPException(status_code=400, detail=f"嵌入模型不可用: {embed_model.name} (status={embed_model.status})")
 
-    # 校验模型维度与 embedding 表维度一致（当前 embedding 表为 VECTOR(512)）
     EMBEDDING_TABLE_DIMENSION = 512
     if embed_model.dimension != EMBEDDING_TABLE_DIMENSION:
         raise HTTPException(

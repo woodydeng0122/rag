@@ -1,9 +1,10 @@
 import os
+import asyncio
 import argparse
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from rag.bootstrap import Settings, build_container, Container
-from rag.cli.commands import cmd_ask, cmd_eval
+from rag.cli.commands import cmd_ask, cmd_eval, cmd_migrate
 
 
 def start_api(container: Container):
@@ -21,6 +22,9 @@ def main():
     # api 子命令
     subparsers.add_parser("api", help="启动 API 服务")
 
+    # migrate 子命令
+    subparsers.add_parser("migrate", help="执行数据库迁移")
+
     # ask 子命令
     p_ask = subparsers.add_parser("ask", help="提问")
     p_ask.add_argument("-q", "--query", type=str, help="查询内容")
@@ -33,6 +37,11 @@ def main():
     p_eval.add_argument("-o", "--output", type=str, default="./eval_result.json", help="结果输出文件")
 
     args = parser.parse_args()
+
+    if args.command == "migrate":
+        asyncio.run(cmd_migrate())
+        return
+
     settings = Settings.from_env()
     container = build_container(settings)
 

@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from rag.api.schemas.profile import UpdateProfileRequest, ProfileResponse
 from rag.domain.entities.profile import Profile
-from rag.domain.ports.profile_repository import ProfileRepositoryPort
-from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])

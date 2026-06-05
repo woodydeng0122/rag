@@ -26,9 +26,10 @@ async def list_embed_models(
     return EmbedModelListResponse(models=[_model_to_item(m) for m in models])
 
 
-@router.post("/check-status", response_model=EmbedModelListResponse)
-async def check_embed_model_status(
+@router.put("/status", response_model=EmbedModelListResponse)
+async def refresh_embed_model_status(
     container: Container = Depends(get_container),
 ):
+    """刷新所有嵌入模型的在线状态"""
     models = await container.scan_embed_models_usecase.execute()
     return EmbedModelListResponse(models=[_model_to_item(m) for m in models])

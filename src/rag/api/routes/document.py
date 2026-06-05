@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse
+from rag.api.schemas.document import (
+    DocumentResponse, ProcessDocumentResponse, BatchProcessRequest,
+    BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse,
+    SourceContentResponse, EmbeddingResponse,
+)
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
 
-router = APIRouter(prefix="/api", tags=["documents"])
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["documents"])
 
 
 def _doc_to_response(d) -> DocumentResponse:
@@ -29,8 +33,18 @@ def _doc_to_response(d) -> DocumentResponse:
     )
 
 
+@router.get("/documents", response_model=list[DocumentResponse])
+async def list_documents(
+    project_id: str,
+    container: Container = Depends(get_container),
+):
+    documents = await container.document_repo.list_by_project(project_id)
+    return [_doc_to_response(d) for d in documents]
+
+
 @router.post("/documents/{document_id}/process", response_model=ProcessDocumentResponse)
 async def process_document(
+    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
@@ -49,17 +63,9 @@ async def process_document(
     )
 
 
-@router.get("/projects/{project_id}/documents", response_model=list[DocumentResponse])
-async def list_documents(
-    project_id: str,
-    container: Container = Depends(get_container),
-):
-    documents = await container.document_repo.list_by_project(project_id)
-    return [_doc_to_response(d) for d in documents]
-
-
 @router.delete("/documents/{document_id}")
 async def delete_document(
+    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
@@ -75,6 +81,7 @@ async def delete_document(
 
 @router.get("/documents/{document_id}/chunks", response_model=ChunkListResponse)
 async def list_chunks(
+    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
@@ -103,6 +110,7 @@ async def list_chunks(
 
 @router.get("/documents/{document_id}/source", response_model=SourceContentResponse)
 async def get_source_content(
+    project_id: str,
     document_id: str,
     container: Container = Depends(get_container),
 ):
@@ -153,6 +161,7 @@ async def get_source_content(
 
 @router.get("/chunks/{chunk_id}/embedding", response_model=EmbeddingResponse)
 async def get_chunk_embedding(
+    project_id: str,
     chunk_id: str,
     container: Container = Depends(get_container),
 ):
@@ -167,8 +176,8 @@ async def get_chunk_embedding(
     )
 
 
-@router.get("/projects/{project_id}/chunks/search", response_model=ChunkListResponse)
-async def search_chunks_by_project(
+@router.get("/chunks/search", response_model=ChunkListResponse)
+async def search_chunks(
     project_id: str,
     q: str = "",
     limit: int = 20,
@@ -198,6 +207,7 @@ async def search_chunks_by_project(
 
 @router.post("/documents/batch-process", response_model=BatchProcessResponse)
 async def batch_process_documents(
+    project_id: str,
     req: BatchProcessRequest,
     container: Container = Depends(get_container),
 ):

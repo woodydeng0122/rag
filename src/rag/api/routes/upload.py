@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from rag.api.schemas.upload import UploadResponse
 from rag.bootstrap.container import Container, get_container
 
-router = APIRouter(prefix="/api", tags=["upload"])
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
 
 
-@router.post("/projects/{project_id}/documents", response_model=UploadResponse)
+@router.post("/documents", response_model=UploadResponse)
 async def upload_documents(
     project_id: str,
     file: UploadFile = File(...),

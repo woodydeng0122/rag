@@ -1,9 +1,9 @@
-"""应用启动初始化 — 连接池 + 自动迁移 + 模型扫描"""
+"""应用启动初始化 — 连接池 + 迁移校验 + 模型扫描"""
 
 import logging
 
 from rag.infra.database.connection import init_pool
-from rag.infra.database.migrator import run_migrations
+from rag.infra.database.migrator import check_migrations
 from rag.bootstrap.settings import Settings
 from rag.bootstrap.container import build_container
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 async def startup() -> None:
-    """应用启动时调用：初始化数据库连接池，执行未运行的迁移，扫描嵌入模型"""
+    """应用启动时调用：初始化数据库连接池，校验迁移状态，扫描嵌入模型"""
     settings = Settings.from_env()
 
     # 1. 初始化连接池
@@ -24,9 +24,15 @@ async def startup() -> None:
     )
     logger.info("数据库连接池已初始化")
 
-    # 2. 自动迁移
-    await run_migrations()
-    logger.info("数据库迁移检查完成")
+    # 2. 校验迁移状态（不执行迁移，仅检查）
+    pending = await check_migrations()
+    if pending:
+        logger.warning(
+            "数据库迁移未完成！待执行: %s。请运行: python -m rag migrate",
+            ", ".join(pending),
+        )
+    else:
+        logger.info("数据库迁移校验通过")
 
     # 3. 扫描本地嵌入模型
     container = build_container(settings)

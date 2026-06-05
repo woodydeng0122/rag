@@ -1,20 +1,16 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends
 
 from rag.api.schemas.ask import AskRequest, AskResponse
-from rag.application.usecases.ask import AskUseCase
+from rag.bootstrap.container import Container, get_container
+
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["问答"])
 
 
-router = APIRouter(prefix="/ask", tags=["问答"])
-
-
-def get_ask_usecase(request: Request) -> AskUseCase:
-    return request.app.state.container.ask
-
-
-@router.post("/", response_model=AskResponse)
-def ask(
+@router.post("/ask", response_model=AskResponse)
+async def ask(
+    project_id: str,
     req: AskRequest,
-    usecase: AskUseCase = Depends(get_ask_usecase),
+    container: Container = Depends(get_container),
 ) -> AskResponse:
     """根据查询检索相关分块并生成回答（需要 LLM API Key）"""
-    return usecase.execute(query=req.query, top_k=req.top_k)
+    return container.ask.execute(query=req.query, top_k=req.top_k)
