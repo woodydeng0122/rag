@@ -5,6 +5,12 @@
 #   ./scripts/ssh-tunnel.sh stop    关闭隧道
 #   ./scripts/ssh-tunnel.sh status  查看状态
 
+# 加载 .env 文件（如果存在）
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/../.env" ]; then
+    . "$SCRIPT_DIR/../.env"
+fi
+
 REMOTE_HOST="${SSH_TUNNEL_HOST:-user@remote-host}"
 LOCAL_PORT="${SSH_TUNNEL_LOCAL_PORT:-5434}"
 REMOTE_PORT="${SSH_TUNNEL_REMOTE_PORT:-5434}"
@@ -19,7 +25,7 @@ case "${1:-status}" in
             echo "隧道已在运行 (本地端口 $LOCAL_PORT)"
             exit 0
         fi
-        ssh -fNL "$LOCAL_PORT:localhost:$REMOTE_PORT" "$REMOTE_HOST"
+        ssh -fNL "$LOCAL_PORT:localhost:$REMOTE_PORT" -o ServerAliveInterval=30 -o ServerAliveCountMax=3 "$REMOTE_HOST"
         if is_alive; then
             echo "隧道已建立: localhost:$LOCAL_PORT -> $REMOTE_HOST:localhost:$REMOTE_PORT"
         else

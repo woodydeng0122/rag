@@ -10,7 +10,7 @@
 2. 优先使用绝对路径
 
 # 执行脚本时
-- 禁止执行项目开发启动脚本(pnpm dev|python -m rag api)，除非用户指定
+- 禁止启动开发环境！！！！，除非用户指定
 - 执行其他Python脚本前, 先运行: source .venv/bin/activate
 
 # 有代码改动时自检

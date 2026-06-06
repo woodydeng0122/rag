@@ -10,6 +10,7 @@ from rag.domain.ports.file_storage import FileStoragePort
 
 
 ALLOWED_EXTENSIONS = {".md", ".txt", ".pdf"}
+ALLOWED_ARCHIVE_EXTENSIONS = {".zip"}
 
 
 class UploadUseCase:
@@ -38,8 +39,9 @@ class UploadUseCase:
         docs_dir = f"docs/{upload_id}"
         self._file_storage.mkdir(docs_dir)
 
-        # 判断是否为 zip
-        if filename.lower().endswith(".zip"):
+        # 判断是否为允许的压缩包
+        ext = Path(filename).suffix.lower()
+        if ext in ALLOWED_ARCHIVE_EXTENSIONS:
             return await self._handle_zip(
                 file_content, docs_dir, upload_id, project_id,
                 splitter_strategy, chunk_size, chunk_overlap,
@@ -47,9 +49,9 @@ class UploadUseCase:
             )
         else:
             # 单文件
-            ext = Path(filename).suffix.lower()
             if ext not in ALLOWED_EXTENSIONS:
-                raise ValueError(f"不支持的文件类型: {ext}，仅支持 {ALLOWED_EXTENSIONS}")
+                allowed = ALLOWED_EXTENSIONS | ALLOWED_ARCHIVE_EXTENSIONS
+                raise ValueError(f"不支持的文件类型: {ext}，仅支持 {allowed}")
 
             file_path = f"{docs_dir}/{filename}"
             self._file_storage.write_bytes(file_path, file_content)
