@@ -1,4 +1,4 @@
-from rag.domain.entities.embed_model import EmbedModel
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.model_scanner import ModelScannerPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
@@ -23,23 +23,23 @@ class EmbedModelUseCase:
     async def get(self, model_id: str) -> EmbedModel | None:
         return await self._repo.get_by_id(model_id)
 
-    async def create(self, name: str, dimension: int = 0, description: str = "", metadata: dict | None = None) -> EmbedModel:
+    async def create(self, name: str, dimension: int = 0, description: str = "", config: dict | None = None) -> EmbedModel:
         """创建模型 — 校验名称唯一，尝试从本地 config.json 自动填充维度"""
         existing = await self._repo.get_by_name(name)
         if existing:
             raise ValueError(f"模型名称已存在: {name}")
 
-        # 如果未传 metadata，尝试从本地模型目录读取配置
-        if metadata is None:
-            config = self._scanner.read_config(name)
-            if config:
-                dimension = config.get("hidden_size", dimension)
-                metadata = config
-                status = "online"
+        # 如果未传 config，尝试从本地模型目录读取配置
+        if config is None:
+            model_config = self._scanner.read_config(name)
+            if model_config:
+                dimension = model_config.get("hidden_size", dimension)
+                config = model_config
+                status = ModelStatus.ONLINE
             else:
-                status = "offline"
+                status = ModelStatus.OFFLINE
         else:
-            status = "online" if metadata else "offline"
+            status = ModelStatus.ONLINE if config else ModelStatus.OFFLINE
 
         if not dimension:
             raise ValueError("无法确定向量维度：本地未找到模型且未指定 dimension")
@@ -49,7 +49,7 @@ class EmbedModelUseCase:
             dimension=dimension,
             description=description,
             status=status,
-            metadata=metadata or {},
+            config=config or {},
         )
         return await self._repo.save(model)
 

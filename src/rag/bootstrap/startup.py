@@ -35,5 +35,5 @@ async def startup() -> None:
     # 3. 扫描本地嵌入模型
     container = build_container(settings)
     models = await container.scan_embed_models_usecase.execute()
-    online_count = sum(1 for m in models if m.status == "online")
+    online_count = sum(1 for m in models if m.is_online)
     logger.info(f"嵌入模型扫描完成: {len(models)} 个模型, {online_count} 个 online")

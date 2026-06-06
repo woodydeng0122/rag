@@ -10,7 +10,13 @@ from rag.api.schemas.golden_dataset import (
     GoldenDatasetResponse,
     ImportGoldenDatasetResponse,
     SkippedRecordResponse,
+    GenerateGoldenRequest,
+    GenerateGoldenResponse,
+    GenerationTaskResponse,
+    BatchStatusUpdateRequest,
+    BatchStatusUpdateResponse,
 )
+from rag.domain.entities.generate_config import GenerateConfig
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["golden-datasets"])
@@ -25,6 +31,7 @@ def _record_to_response(r) -> GoldenDatasetResponse:
         query=r.query,
         ground_truth_chunks=r.ground_truth_chunks,
         reference_answer=r.reference_answer or "",
+        status=r.status,
         retrieved_chunk_ids=r.retrieved_chunk_ids or [],
         is_hit=r.is_hit,
         hit_rank=r.hit_rank,
@@ -34,12 +41,30 @@ def _record_to_response(r) -> GoldenDatasetResponse:
     )
 
 
+def _task_to_response(t) -> GenerationTaskResponse:
+    return GenerationTaskResponse(
+        id=t.id,
+        project_id=t.project_id,
+        status=t.status,
+        total=t.total,
+        completed=t.completed,
+        failed=t.failed,
+        document_ids=t.document_ids or [],
+        chunk_ids=t.chunk_ids or [],
+        config=t.config or {},
+        error_message=t.error_message or "",
+        created_at=t.created_at.isoformat() if t.created_at else "",
+        finished_at=t.finished_at.isoformat() if t.finished_at else None,
+    )
+
+
 @router.get("/golden-datasets", response_model=list[GoldenDatasetResponse])
 async def list_golden_datasets(
     project_id: str,
+    status: str | None = None,
     container: Container = Depends(get_container),
 ):
-    records = await container.golden_dataset_usecase.list_by_project(project_id)
+    records = await container.golden_dataset_usecase.list_by_project(project_id, status=status)
     return [_record_to_response(r) for r in records]
 
 
@@ -58,7 +83,7 @@ async def create_golden_dataset(
     return _record_to_response(record)
 
 
-@router.put("/golden-datasets/{record_id}", response_model=GoldenDatasetResponse)
+@router.patch("/golden-datasets/{record_id}", response_model=GoldenDatasetResponse)
 async def update_golden_dataset(
     project_id: str,
     record_id: str,
@@ -66,11 +91,16 @@ async def update_golden_dataset(
     container: Container = Depends(get_container),
 ):
     try:
+        # 先获取当前记录，用请求中的非 None 字段覆盖
+        current = await container.golden_dataset_usecase.get(record_id)
+        if current is None:
+            raise ValueError(f"黄金记录 {record_id} 不存在")
         record = await container.golden_dataset_usecase.update(
             record_id=record_id,
-            query=req.query,
-            ground_truth_chunks=req.ground_truth_chunks,
-            reference_answer=req.reference_answer,
+            query=req.query if req.query is not None else current.query,
+            ground_truth_chunks=req.ground_truth_chunks if req.ground_truth_chunks is not None else current.ground_truth_chunks,
+            reference_answer=req.reference_answer if req.reference_answer is not None else current.reference_answer,
+            status=req.status,
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -87,6 +117,81 @@ async def delete_golden_dataset(
     if not deleted:
         raise HTTPException(status_code=404, detail="黄金记录不存在")
     return {"detail": "删除成功"}
+
+
+@router.post("/golden-datasets/generate", response_model=GenerateGoldenResponse)
+async def generate_golden_dataset(
+    project_id: str,
+    req: GenerateGoldenRequest,
+    container: Container = Depends(get_container),
+):
+    """提交 LLM 生成黄金数据集任务"""
+    if not req.document_ids and not req.chunk_ids:
+        raise HTTPException(status_code=400, detail="必须提供 document_ids 或 chunk_ids")
+
+    config = GenerateConfig()
+    if req.config:
+        config = GenerateConfig(
+            per_chunk=req.config.per_chunk,
+            question_types=req.config.question_types or config.question_types,
+            difficulty=req.config.difficulty,
+            user_persona=req.config.user_persona,
+            chunk_batch_size=req.config.chunk_batch_size,
+            file_char_threshold=req.config.file_char_threshold,
+        )
+
+    try:
+        task = await container.generate_golden_usecase.execute(
+            project_id=project_id,
+            document_ids=req.document_ids or None,
+            chunk_ids=req.chunk_ids or None,
+            config=config,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return GenerateGoldenResponse(task_id=task.id, status=task.status)
+
+
+@router.get("/generation-tasks", response_model=list[GenerationTaskResponse])
+async def list_generation_tasks(
+    project_id: str,
+    container: Container = Depends(get_container),
+):
+    tasks = await container.generate_golden_usecase.task_repo.list_by_project(project_id)
+    return [_task_to_response(t) for t in tasks]
+
+
+@router.get("/generation-tasks/{task_id}", response_model=GenerationTaskResponse)
+async def get_generation_task(
+    project_id: str,
+    task_id: str,
+    container: Container = Depends(get_container),
+):
+    task = await container.generate_golden_usecase.task_repo.get_by_id(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="生成任务不存在")
+    return _task_to_response(task)
+
+
+@router.post("/golden-datasets/batch-approve", response_model=BatchStatusUpdateResponse)
+async def batch_approve(
+    project_id: str,
+    req: BatchStatusUpdateRequest,
+    container: Container = Depends(get_container),
+):
+    count = await container.golden_dataset_usecase.batch_approve(req.record_ids)
+    return BatchStatusUpdateResponse(updated_count=count)
+
+
+@router.post("/golden-datasets/batch-reject", response_model=BatchStatusUpdateResponse)
+async def batch_reject(
+    project_id: str,
+    req: BatchStatusUpdateRequest,
+    container: Container = Depends(get_container),
+):
+    count = await container.golden_dataset_usecase.batch_reject(req.record_ids)
+    return BatchStatusUpdateResponse(updated_count=count)
 
 
 @router.post("/golden-datasets/import", response_model=ImportGoldenDatasetResponse)

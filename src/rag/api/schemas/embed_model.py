@@ -1,13 +1,15 @@
 from pydantic import BaseModel
 
+from rag.domain.entities.embed_model import ModelStatus
+
 
 class EmbedModelItem(BaseModel):
     id: str
     name: str
     dimension: int
     description: str = ""
-    status: str = "offline"
-    metadata: dict = {}
+    status: ModelStatus = ModelStatus.OFFLINE
+    config: dict = {}
     created_at: str = ""
     updated_at: str = ""
 

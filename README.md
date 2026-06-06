@@ -28,3 +28,8 @@ text2vec-large-chinese	512/1024	1024	老牌中文模型，有的版本支持 102
 4. 代码块保护：切分时不截断 ```...``` 块
 
 -> multi-level heading
+
+
+聚合根对应一个 Repository，聚合根内部的子对象不对外暴露，也没有自己的 Repository。
+
+聚合根是整个聚合的唯一对外入口，普通 Entity 只在聚合内部存在，不对外暴露。

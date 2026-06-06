@@ -16,7 +16,7 @@ def _model_to_item(m) -> EmbedModelItem:
         dimension=m.dimension,
         description=m.description,
         status=m.status,
-        metadata=m.metadata or {},
+        config=m.config or {},
         created_at=m.created_at.isoformat() if m.created_at else "",
         updated_at=m.updated_at.isoformat() if m.updated_at else "",
     )

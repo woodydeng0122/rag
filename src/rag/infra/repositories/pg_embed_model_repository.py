@@ -1,6 +1,6 @@
 import json
 
-from rag.domain.entities.embed_model import EmbedModel
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.infra.database.connection import get_pool
 
@@ -17,8 +17,8 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                 ON CONFLICT (name) DO UPDATE SET
                     dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                 RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
-                model.name, model.dimension, model.description, model.status,
-                json.dumps(model.metadata, ensure_ascii=False),
+                model.name, model.dimension, model.description, model.status.value,
+                json.dumps(model.config, ensure_ascii=False),
             )
         return _row_to_model(row)
 
@@ -35,8 +35,8 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                     ON CONFLICT (name) DO UPDATE SET
                         dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                     RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
-                    m.name, m.dimension, m.description, m.status,
-                    json.dumps(m.metadata, ensure_ascii=False),
+                    m.name, m.dimension, m.description, m.status.value,
+                    json.dumps(m.config, ensure_ascii=False),
                 )
                 results.append(_row_to_model(row))
         return results
@@ -71,12 +71,12 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
             return None
         return _row_to_model(row)
 
-    async def update_status(self, model_id: str, status: str) -> None:
+    async def update_status(self, model_id: str, status: ModelStatus) -> None:
         pool = get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
                 "UPDATE embed_model SET status = $1, updated_at = now() WHERE id = $2",
-                status, model_id,
+                status.value, model_id,
             )
 
     async def update(self, model: EmbedModel) -> EmbedModel:
@@ -103,17 +103,17 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
 
 
 def _row_to_model(row) -> EmbedModel:
-    metadata = row["metadata"]
-    if isinstance(metadata, str):
+    config = row["metadata"]
+    if isinstance(config, str):
         import json as _json
-        metadata = _json.loads(metadata)
+        config = _json.loads(config)
     return EmbedModel(
         id=str(row["id"]),
         name=row["name"],
         dimension=row["dimension"],
         description=row["description"] or "",
-        status=row["status"],
-        metadata=metadata or {},
+        status=ModelStatus(row["status"]),
+        config=config or {},
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

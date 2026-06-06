@@ -11,6 +11,7 @@ class GoldenRecord:
     reference_answer: str = ""
     id: str = ""
     project_id: str = ""
+    status: str = "approved"
     retrieved_chunk_ids: list[str] = field(default_factory=list)
     is_hit: bool | None = None
     hit_rank: int | None = None

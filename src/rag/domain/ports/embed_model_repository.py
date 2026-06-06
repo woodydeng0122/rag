@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from rag.domain.entities.embed_model import EmbedModel
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 
 
 class EmbedModelRepositoryPort(ABC):
@@ -22,7 +22,7 @@ class EmbedModelRepositoryPort(ABC):
     async def get_by_name(self, name: str) -> EmbedModel | None: ...
 
     @abstractmethod
-    async def update_status(self, model_id: str, status: str) -> None: ...
+    async def update_status(self, model_id: str, status: ModelStatus) -> None: ...
 
     @abstractmethod
     async def update(self, model: EmbedModel) -> EmbedModel: ...

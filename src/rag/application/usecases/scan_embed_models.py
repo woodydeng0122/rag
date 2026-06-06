@@ -1,4 +1,4 @@
-from rag.domain.entities.embed_model import EmbedModel
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.model_scanner import ModelScannerPort
 
@@ -24,16 +24,16 @@ class ScanEmbedModelsUseCase:
             model = EmbedModel(
                 name=s.name,
                 dimension=s.dimension,
-                status="online",
-                metadata=s.metadata,
+                status=ModelStatus.ONLINE,
+                config=s.metadata,
             )
             await self._repo.save(model)
 
         # 3. 将不在本地的模型标记为 offline
         all_models = await self._repo.get_all()
         for m in all_models:
-            if m.name not in scanned_names and m.status != "offline":
-                await self._repo.update_status(m.id, "offline")
+            if m.name not in scanned_names and m.is_online:
+                await self._repo.update_status(m.id, ModelStatus.OFFLINE)
 
         # 4. 返回更新后的完整列表
         return await self._repo.get_all()

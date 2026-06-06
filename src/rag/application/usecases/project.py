@@ -19,8 +19,8 @@ class ProjectUseCase:
         embed_model = await self._embed_model_repo.get_by_id(embed_model_id)
         if embed_model is None:
             raise ValueError("嵌入模型不存在")
-        if embed_model.status != "online":
-            raise ValueError(f"嵌入模型不可用: {embed_model.name} (status={embed_model.status})")
+        if not embed_model.is_online:
+            raise ValueError(f"嵌入模型不可用: {embed_model.name} (status={embed_model.status.value})")
 
         project = Project(
             name=name,

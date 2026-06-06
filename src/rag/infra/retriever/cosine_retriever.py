@@ -34,7 +34,7 @@ class CosineRetriever(RetrieverPort):
             # 简化：使用 embed_model_repo 查找所有在线模型，取第一个
             # TODO: 后续可通过 project 表的 embed_model_id 精确查找
             models = await self._embed_model_repo.get_all()
-            online_models = [m for m in models if m.status == "online"]
+            online_models = [m for m in models if m.is_online]
             if online_models:
                 embedder_model_name = online_models[0].name
 

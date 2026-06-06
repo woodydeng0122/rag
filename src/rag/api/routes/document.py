@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse
+from rag.api.schemas.golden_dataset import GoldenDatasetResponse
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
 
@@ -173,6 +174,33 @@ async def search_chunks_by_project(
             for c in chunks
         ],
     )
+
+
+@router.get("/projects/{project_id}/chunks/{chunk_id}/golden-records", response_model=list[GoldenDatasetResponse])
+async def get_chunk_golden_records(
+    project_id: str,
+    chunk_id: str,
+    container: Container = Depends(get_container),
+):
+    """查询分块关联的黄金记录"""
+    records = await container.golden_dataset_usecase.list_by_chunk_id(chunk_id, project_id)
+    return [
+        GoldenDatasetResponse(
+            id=r.id,
+            project_id=r.project_id,
+            query=r.query,
+            ground_truth_chunks=r.ground_truth_chunks,
+            reference_answer=r.reference_answer or "",
+            status=r.status,
+            retrieved_chunk_ids=r.retrieved_chunk_ids or [],
+            is_hit=r.is_hit,
+            hit_rank=r.hit_rank,
+            evaluated_at=r.evaluated_at.isoformat() if r.evaluated_at else None,
+            created_at=r.created_at.isoformat() if r.created_at else "",
+            metadata=r.metadata if r.metadata else {},
+        )
+        for r in records
+    ]
 
 
 @router.post("/documents/batch-process", response_model=BatchProcessResponse)

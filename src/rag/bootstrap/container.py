@@ -4,6 +4,7 @@ from rag.application.usecases.ask import AskUseCase
 from rag.application.usecases.retrieve import RetrieveUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
 from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
+from rag.application.usecases.generate_golden import GenerateGoldenUseCase
 from rag.application.usecases.upload import UploadUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
@@ -17,6 +18,7 @@ from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
 from rag.infra.repositories.pg_embedding_repository import PgEmbeddingRepository
 from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
 from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
+from rag.infra.repositories.pg_generation_task_repository import PgGenerationTaskRepository
 from rag.infra.repositories.pg_profile_repository import PgProfileRepository
 from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
 from rag.infra.embedder.model_scanner import ModelScanner
@@ -36,6 +38,7 @@ class Container:
     upload_usecase: UploadUseCase
     process_document_usecase: ProcessDocumentUseCase
     golden_dataset_usecase: GoldenDatasetUseCase
+    generate_golden_usecase: GenerateGoldenUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
     project_usecase: ProjectUseCase
     document_usecase: DocumentUseCase
@@ -66,6 +69,7 @@ def build_container(settings: Settings | None = None) -> Container:
     pg_embedding_repo = PgEmbeddingRepository()
     pg_embed_model_repo = PgEmbedModelRepository()
     pg_golden_repo = PgGoldenDatasetRepository()
+    pg_generation_task_repo = PgGenerationTaskRepository()
     pg_profile_repo = PgProfileRepository()
 
     # 基础设施适配器
@@ -107,6 +111,12 @@ def build_container(settings: Settings | None = None) -> Container:
         embedder_pool=embedder_pool,
     )
     golden_dataset_usecase = GoldenDatasetUseCase(golden_repo=pg_golden_repo, chunk_repo=pg_chunk_repo)
+    generate_golden_usecase = GenerateGoldenUseCase(
+        llm=llm,
+        golden_repo=pg_golden_repo,
+        chunk_repo=pg_chunk_repo,
+        task_repo=pg_generation_task_repo,
+    )
     project_usecase = ProjectUseCase(
         project_repo=pg_project_repo,
         embed_model_repo=pg_embed_model_repo,
@@ -141,6 +151,7 @@ def build_container(settings: Settings | None = None) -> Container:
         upload_usecase=upload_usecase,
         process_document_usecase=process_document_usecase,
         golden_dataset_usecase=golden_dataset_usecase,
+        generate_golden_usecase=generate_golden_usecase,
         scan_embed_models_usecase=scan_embed_models_usecase,
         project_usecase=project_usecase,
         document_usecase=document_usecase,
