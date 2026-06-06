@@ -46,24 +46,11 @@ async def create_embed_model(
     req: CreateEmbedModelRequest,
     container: Container = Depends(get_container),
 ):
-    # 尝试从本地 config.json 读取维度和元信息
-    config = container.model_scanner.read_config(req.name)
-    if config:
-        dimension = config.get("hidden_size", 0)
-        metadata = config
-    else:
-        dimension = req.dimension
-        metadata = {}
-
-    if not dimension:
-        raise HTTPException(status_code=400, detail="无法确定向量维度：本地未找到模型且未指定 dimension")
-
     try:
         saved = await container.embed_model_usecase.create(
             name=req.name,
-            dimension=dimension,
+            dimension=req.dimension,
             description=req.description,
-            metadata=metadata,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

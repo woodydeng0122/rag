@@ -41,6 +41,9 @@ class EmbedModelUseCase:
         else:
             status = "online" if metadata else "offline"
 
+        if not dimension:
+            raise ValueError("无法确定向量维度：本地未找到模型且未指定 dimension")
+
         model = EmbedModel(
             name=name,
             dimension=dimension,

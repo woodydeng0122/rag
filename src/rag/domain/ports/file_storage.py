@@ -13,3 +13,13 @@ class FileStoragePort(ABC):
     def write_bytes(self, path: str, data: bytes) -> None:
         """写入二进制文件"""
         ...
+
+    @abstractmethod
+    def read_text(self, path: str, encoding: str = "utf-8") -> str:
+        """读取文本文件"""
+        ...
+
+    @abstractmethod
+    def exists(self, path: str) -> bool:
+        """判断文件是否存在"""
+        ...

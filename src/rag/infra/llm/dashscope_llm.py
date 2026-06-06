@@ -40,7 +40,5 @@ class DashScopeLLM(LLMPort):
                 if not ttfb:
                     ttfb = (time.perf_counter() - start) * 1000
                     logger.info("TTFB: %.2fms", ttfb)
-                print(content, end="", flush=True)
                 result.append(content)
-        print()
         return "".join(result)

@@ -115,6 +115,7 @@ def build_container(settings: Settings | None = None) -> Container:
         document_repo=pg_document_repo,
         chunk_repo=pg_chunk_repo,
         embedding_repo=pg_embedding_repo,
+        file_storage=file_storage,
     )
     embed_model_usecase = EmbedModelUseCase(embed_model_repo=pg_embed_model_repo, project_repo=pg_project_repo, model_scanner=model_scanner)
     profile_usecase = ProfileUseCase(
