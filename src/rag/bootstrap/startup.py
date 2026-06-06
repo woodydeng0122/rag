@@ -1,8 +1,8 @@
-"""应用启动初始化 — 连接池 + 迁移校验 + 模型扫描"""
+"""应用启动/关闭初始化 — 连接池 + 迁移校验 + 模型扫描"""
 
 import logging
 
-from rag.infra.database.connection import init_pool
+from rag.infra.database.connection import init_pool, close_pool
 from rag.infra.database.migrator import check_migrations
 from rag.bootstrap.settings import Settings
 from rag.bootstrap.container import build_container
@@ -37,3 +37,9 @@ async def startup() -> None:
     models = await container.scan_embed_models_usecase.execute()
     online_count = sum(1 for m in models if m.is_online)
     logger.info(f"嵌入模型扫描完成: {len(models)} 个模型, {online_count} 个 online")
+
+
+async def shutdown() -> None:
+    """应用关闭时调用：关闭数据库连接池"""
+    await close_pool()
+    logger.info("数据库连接池已关闭")

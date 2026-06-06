@@ -58,7 +58,8 @@ root_package = "src.rag"
 name = "Clean Architecture layers"
 type = "layers"
 layers = [
-    "src.rag.api | src.rag.cli | src.rag.bootstrap",
+    "src.rag.api | src.rag.cli",
+    "src.rag.bootstrap",
     "src.rag.infra | src.rag.application",
     "src.rag.domain",
 ]

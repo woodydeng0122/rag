@@ -165,7 +165,7 @@ async def list_generation_tasks(
     project_id: str,
     container: Container = Depends(get_container),
 ):
-    tasks = await container.generate_golden_usecase.task_repo.list_by_project(project_id)
+    tasks = await container.generate_golden_usecase.list_tasks(project_id)
     return [_task_to_response(t) for t in tasks]
 
 
@@ -175,7 +175,7 @@ async def get_generation_task(
     task_id: str,
     container: Container = Depends(get_container),
 ):
-    task = await container.generate_golden_usecase.task_repo.get_by_id(task_id)
+    task = await container.generate_golden_usecase.get_task(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="生成任务不存在")
     return _task_to_response(task)

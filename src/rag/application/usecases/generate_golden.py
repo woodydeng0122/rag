@@ -297,6 +297,14 @@ class GenerateGoldenUseCase:
         task.increment_completed()
         await self.task_repo.update(task)
 
+    async def list_tasks(self, project_id: str) -> list[GenerationTask]:
+        """查询项目的生成任务列表"""
+        return await self.task_repo.list_by_project(project_id)
+
+    async def get_task(self, task_id: str) -> GenerationTask | None:
+        """查询单个生成任务"""
+        return await self.task_repo.get_by_id(task_id)
+
     @staticmethod
     def _load_chunks_text(chunks: list[Chunk], chunk_ids: list[str]) -> str:
         """加载指定 chunk 的文本内容"""

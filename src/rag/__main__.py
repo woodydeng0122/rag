@@ -53,7 +53,6 @@ def main():
     if args.command == "api":
         import uvicorn
         from rag.api.app import app
-        app.state.container = container
         uvicorn.run(app, host="0.0.0.0", port=8000)
     elif args.command == "ask":
         from rag.cli import cmd_ask

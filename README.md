@@ -56,6 +56,14 @@ text2vec-large-chinese	512/1024	1024	老牌中文模型，有的版本支持 102
 3. 保护不变量
 有复杂状态流转再加
 
+## Repository
+职责：定义数据存取, 包含 domain/port 和 infra/impl
+下游：DAO
+
+## Port & Adapter
+Port：内层定义的抽象接口，表达"我需要这个能力"，不关心谁来实现。
+Adapter: Port 的具体实现，负责把外部技术适配成内层期望的接口。
+例子：Repository 是一种 Port，RepositoryImpl 是它的 Adapter。
 
 ## 领域服务
 解决问题：

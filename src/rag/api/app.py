@@ -14,15 +14,14 @@ from .routes.golden_dataset import router as golden_dataset_router
 from .routes.profile import router as profile_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
-from rag.bootstrap.startup import startup
-from rag.infra.database.connection import close_pool
+from rag.bootstrap.startup import startup, shutdown
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await startup()
     yield
-    await close_pool()
+    await shutdown()
 
 
 app = FastAPI(
@@ -70,7 +69,7 @@ app.add_middleware(ResponseWrapperMiddleware)
 # CORS 中间件 — 允许前端跨域访问
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3100", "http://localhost:3000"],
+    allow_origins=["http://localhost:3100"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
