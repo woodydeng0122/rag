@@ -6,6 +6,9 @@ python -m rag migrate
 
 # 启动 API 服务（不再自动迁移，仅校验）
 python -m rag api
+
+# 下载 embedding 模型
+python -m rag download-embedding -m 200~BAAI/bge-small-zh-v1.5 -o ./models
 ```
 
 ### embedding 模型

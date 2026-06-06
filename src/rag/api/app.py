@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .routes import health_router, retrieve_router, ask_router, evaluate_router
 from .routes.project import router as project_router
@@ -32,6 +33,15 @@ app = FastAPI(
 )
 
 # ========== 全局异常处理 — 统一返回 {code, message, result} 格式 ==========
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """HTTP 异常（404/400 等）→ 统一格式"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error(message=str(exc.detail), code=ERROR_CODE),
+    )
 
 
 @app.exception_handler(ValueError)

@@ -17,7 +17,6 @@ def _doc_to_response(d) -> DocumentResponse:
         file_type=d.file_type,
         checksum=d.checksum,
         status=d.status,
-        embedder_model=d.embedder_model,
         splitter_strategy=d.splitter_strategy,
         chunk_size=d.chunk_size,
         chunk_overlap=d.chunk_overlap,

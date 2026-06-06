@@ -3,16 +3,6 @@ import asyncio
 import argparse
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-from rag.bootstrap import Settings, build_container, Container
-from rag.cli.commands import cmd_ask, cmd_eval, cmd_migrate
-
-
-def start_api(container: Container):
-    """启动 API 服务"""
-    import uvicorn
-    from rag.api.app import app
-    app.state.container = container
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 def main():
@@ -37,20 +27,39 @@ def main():
     p_eval.add_argument("-k", "--k", type=int, nargs="+", help="Recall@K 的 K 值")
     p_eval.add_argument("-o", "--output", type=str, default="./eval_result.json", help="结果输出文件")
 
+    # download-embedding 子命令
+    p_download = subparsers.add_parser("download-embedding", help="从 ModelScope 下载 embedding 模型")
+    p_download.add_argument("-m", "--model", type=str, required=True, help="模型名称，如 iic/nlp_gte_sentence-embedding_chinese-base")
+    p_download.add_argument("-o", "--output", type=str, default="./models", help="模型保存目录")
+
     args = parser.parse_args()
 
     if args.command == "migrate":
-        asyncio.run(cmd_migrate())
+        from rag.bootstrap import Settings
+        from rag.cli import cmd_migrate
+        settings = Settings.from_env()
+        asyncio.run(cmd_migrate(settings))
         return
 
+    if args.command == "download-embedding":
+        from rag.cli import cmd_download_embedding
+        cmd_download_embedding(args)
+        return
+
+    from rag.bootstrap import Settings, build_container
     settings = Settings.from_env()
     container = build_container(settings)
 
     if args.command == "api":
-        start_api(container)
+        import uvicorn
+        from rag.api.app import app
+        app.state.container = container
+        uvicorn.run(app, host="0.0.0.0", port=8000)
     elif args.command == "ask":
+        from rag.cli import cmd_ask
         cmd_ask(args, ask=container.ask, project_id=args.project_id)
     elif args.command == "eval":
+        from rag.cli import cmd_eval
         cmd_eval(args, evaluate=container.evaluate, project_id=args.project_id)
 
 
