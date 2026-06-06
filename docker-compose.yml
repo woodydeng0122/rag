@@ -9,6 +9,7 @@ services:
     environment:
       PYTHONUNBUFFERED: 1
       PYTHONPATH: "/app/src"
+      DATABASE_URL: ${DATABASE_URL}
     volumes:
       - .:/app:cached
       - pip-cache:/root/.cache/pip

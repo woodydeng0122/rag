@@ -1,15 +1,14 @@
 services:
   # PostgreSQL + pgvector 数据库
-  dev-rag-db:
+  rag-db:
     image: pgvector/pgvector:pg18
-    container_name: dev-rag-db
+    container_name: rag-db
     ports:
       - "5434:5432"
     env_file:
       - .env
     volumes:
       - rag-postgres-data:/var/lib/postgresql
-      - ./src/rag/infra/database/migrations:/docker-entrypoint-initdb.d
 
 volumes:
   rag-postgres-data:
