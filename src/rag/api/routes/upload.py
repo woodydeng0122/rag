@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 
 from rag.api.schemas.upload import UploadResponse
 from rag.bootstrap.container import Container, get_container
-from rag.domain.entities.document import SplitterConfig
+from rag.domain.value_objects.splitter_config import SplitterConfig
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
 

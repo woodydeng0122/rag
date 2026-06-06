@@ -17,7 +17,7 @@ from rag.api.schemas.golden_dataset import (
     BatchStatusUpdateRequest,
     BatchStatusUpdateResponse,
 )
-from rag.domain.entities.generate_config import GenerateConfig
+from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["golden-datasets"])

@@ -1,6 +1,6 @@
 import json
 
-from rag.domain.entities.generate_config import GenerateConfig
+from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.domain.entities.generation_task import GenerationTask, TaskStatus
 from rag.domain.ports.generation_task_repository import GenerationTaskRepositoryPort
 from rag.infra.database.connection import get_pool

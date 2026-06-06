@@ -40,8 +40,7 @@ class ProjectUseCase:
         project = await self._project_repo.get_by_id(project_id)
         if project is None:
             raise ValueError(f"项目 {project_id} 不存在")
-        project.name = name
-        project.description = description
+        project.update_profile(name, description)
         return await self._project_repo.update(project)
 
     async def delete(self, project_id: str) -> bool:

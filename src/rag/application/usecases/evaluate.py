@@ -1,11 +1,13 @@
 import time as _time
 from datetime import datetime
 
-from rag.domain.entities.golden_record import GoldenRecord, EvaluationMetrics
+from rag.domain.entities.golden_record import GoldenRecord
+from rag.domain.value_objects.evaluation_metrics import EvaluationMetrics
+from rag.domain.value_objects.project_eval_summary import ProjectEvalSummary
 from rag.domain.ports.retriever import RetrieverPort
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
-from rag.domain.services.metrics import recall_at_k, calc_mrr
+from rag.application.results.metrics import recall_at_k, calc_mrr
 from rag.application.results.evaluate_result import EvaluateResult
 
 
@@ -82,12 +84,14 @@ class EvaluateUseCase:
         # 更新项目评测汇总
         project = await self.project_repo.get_by_id(project_id)
         if project is not None:
-            project.eval_recall_at_10 = recall.get("recall@10", {}).get("recall", 0) if "recall@10" in recall else None
-            project.eval_mrr = mrr
-            project.eval_answerable = len(records) - len(failure_queries)
-            project.eval_total = len(records)
-            project.eval_latency_avg_ms = round(total_elapsed / len(records), 2) if records else 0
-            project.evaluated_at = datetime.now()
+            project.record_eval(ProjectEvalSummary(
+                recall_at_10=recall.get("recall@10", {}).get("recall", 0) if "recall@10" in recall else None,
+                mrr=mrr,
+                answerable=len(records) - len(failure_queries),
+                total=len(records),
+                latency_avg_ms=round(total_elapsed / len(records), 2) if records else 0,
+                evaluated_at=datetime.now(),
+            ))
             await self.project_repo.update(project)
 
         return EvaluateResult(

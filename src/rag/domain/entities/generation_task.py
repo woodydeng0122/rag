@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from rag.domain.entities.generate_config import GenerateConfig
+from rag.domain.value_objects.generate_config import GenerateConfig
 
 
 class TaskStatus(str, Enum):

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
-from rag.domain.entities.document import DocumentStatus, SplitterConfig
+from rag.domain.entities.document import DocumentStatus
+from rag.domain.value_objects.splitter_config import SplitterConfig
 
 
 class SplitterConfigSchema(BaseModel):

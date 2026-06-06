@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from rag.domain.entities.project import Project, ProjectEvalSummary
+from rag.domain.entities.project import Project
+from rag.domain.value_objects.project_eval_summary import ProjectEvalSummary
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.infra.database.connection import get_pool
 

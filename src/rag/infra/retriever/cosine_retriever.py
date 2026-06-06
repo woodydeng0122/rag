@@ -1,5 +1,5 @@
 import numpy as np
-from rag.domain.entities.retrieval_result import RetrievalResult
+from rag.domain.value_objects.retrieval_result import RetrievalResult
 from rag.domain.ports.embedder_pool import EmbedderPoolPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort

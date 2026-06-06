@@ -1,4 +1,5 @@
-from rag.domain.entities.document import Document, DocumentStatus, SplitterConfig
+from rag.domain.entities.document import Document, DocumentStatus
+from rag.domain.value_objects.splitter_config import SplitterConfig
 from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.infra.database.connection import get_pool
 

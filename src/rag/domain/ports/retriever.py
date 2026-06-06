@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from rag.domain.entities.retrieval_result import RetrievalResult
+from rag.domain.value_objects.retrieval_result import RetrievalResult
 
 
 class RetrieverPort(ABC):

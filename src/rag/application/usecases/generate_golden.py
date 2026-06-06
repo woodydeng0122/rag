@@ -3,7 +3,7 @@ import json
 import logging
 
 from rag.domain.entities.chunk import Chunk
-from rag.domain.entities.generate_config import GenerateConfig
+from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.domain.entities.generation_task import GenerationTask, TaskStatus
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
@@ -115,7 +115,7 @@ class GenerateGoldenUseCase:
             [{"id": c.id, "heading": c.heading, "index": c.index} for c in chunks],
             ensure_ascii=False,
         )
-        type_dist = self._format_type_distribution(config.question_types)
+        type_dist = config.format_type_distribution()
         n_questions = len(chunks) * config.per_chunk
 
         prompt = (
@@ -144,14 +144,14 @@ class GenerateGoldenUseCase:
             result = self.llm.generate_json(prompt)
         except ValueError:
             logger.warning("整篇文档 Phase 1 失败，跳过文档")
-            task.record_failure(n_questions)
+            task.increment_failed(n_questions)
             await self.task_repo.update(task)
             return
 
         questions = result.get("items", result) if isinstance(result, dict) else result
         if not isinstance(questions, list):
             logger.warning("Phase 1 返回格式异常，跳过文档")
-            task.record_failure(n_questions)
+            task.increment_failed(n_questions)
             await self.task_repo.update(task)
             return
 
@@ -183,7 +183,7 @@ class GenerateGoldenUseCase:
             [{"id": c.id, "content": c.content[:800]} for c in batch],
             ensure_ascii=False,
         )
-        type_dist = self._format_type_distribution(config.question_types)
+        type_dist = config.format_type_distribution()
         n_questions = len(batch) * config.per_chunk
 
         prompt = (
@@ -205,14 +205,14 @@ class GenerateGoldenUseCase:
             result = self.llm.generate_json(prompt)
         except ValueError:
             logger.warning("批次 Phase 1 失败，跳过")
-            task.record_failure(n_questions)
+            task.increment_failed(n_questions)
             await self.task_repo.update(task)
             return
 
         questions = result.get("items", result) if isinstance(result, dict) else result
         if not isinstance(questions, list):
             logger.warning("Phase 1 返回格式异常，跳过批次")
-            task.record_failure(n_questions)
+            task.increment_failed(n_questions)
             await self.task_repo.update(task)
             return
 
@@ -239,7 +239,7 @@ class GenerateGoldenUseCase:
         difficulty = question.get("difficulty", "medium")
 
         if not query:
-            task.record_failure()
+            task.increment_failed()
             await self.task_repo.update(task)
             return
 
@@ -267,7 +267,7 @@ class GenerateGoldenUseCase:
                 supporting_quotes = answer_result.get("supporting_quotes", [])
             except ValueError:
                 logger.warning("Phase 2 失败，query: %s", query[:50])
-                task.record_failure()
+                task.increment_failed()
                 await self.task_repo.update(task)
                 return
 
@@ -294,7 +294,7 @@ class GenerateGoldenUseCase:
         )
         await self.golden_repo.save(record)
 
-        task.record_success()
+        task.increment_completed()
         await self.task_repo.update(task)
 
     @staticmethod
@@ -318,9 +318,3 @@ class GenerateGoldenUseCase:
         if len(gt_chunks) > 3:
             score -= 0.1
         return round(max(score, 0.0), 2)
-
-    @staticmethod
-    def _format_type_distribution(question_types: dict[str, float]) -> str:
-        """格式化问题类型分布描述"""
-        parts = [f"{k} {int(v * 100)}%" for k, v in question_types.items()]
-        return "、".join(parts)

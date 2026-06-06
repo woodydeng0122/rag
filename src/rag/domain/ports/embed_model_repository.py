@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from rag.domain.entities.embed_model import EmbedModel, ModelConfig, ModelStatus
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
+from rag.domain.value_objects.model_config import ModelConfig
 
 
 class EmbedModelRepositoryPort(ABC):

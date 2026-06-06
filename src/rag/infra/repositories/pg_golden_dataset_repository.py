@@ -1,6 +1,7 @@
 import json
 
-from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus, EvaluationMetrics
+from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
+from rag.domain.value_objects.evaluation_metrics import EvaluationMetrics
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.infra.database.connection import get_pool
 

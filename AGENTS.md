@@ -6,7 +6,6 @@
 
 # 代码规范
 1. 加载 `clean-architecture` 技能
-2. 夹杂 `design-principles` 技能
 2. 优先使用绝对路径
 
 # 执行脚本时

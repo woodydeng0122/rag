@@ -1,4 +1,5 @@
-from rag.domain.entities.embed_model import EmbedModel, ModelConfig, ModelStatus
+from rag.domain.entities.embed_model import EmbedModel, ModelStatus
+from rag.domain.value_objects.model_config import ModelConfig
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.model_scanner import ModelScannerPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort

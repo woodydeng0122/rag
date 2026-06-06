@@ -14,7 +14,7 @@ VALID_DIFFICULTIES = {"easy", "medium", "hard", "mixed"}
 
 @dataclass
 class GenerateConfig:
-    """LLM 生成黄金数据的配置"""
+    """LLM 生成黄金数据的配置值对象"""
 
     per_chunk: int = 2
     question_types: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_QUESTION_TYPES))

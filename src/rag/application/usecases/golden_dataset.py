@@ -50,11 +50,15 @@ class GoldenDatasetUseCase:
         record = await self.golden_repo.get_by_id(record_id)
         if record is None:
             raise ValueError(f"黄金记录 {record_id} 不存在")
-        record.query = query
-        record.ground_truth_chunks = ground_truth_chunks
-        record.reference_answer = reference_answer
+        record.update_content(query, ground_truth_chunks, reference_answer)
         if status is not None:
-            record.status = GoldenStatus(status)
+            golden_status = GoldenStatus(status)
+            if golden_status == GoldenStatus.APPROVED:
+                record.approve()
+            elif golden_status == GoldenStatus.REJECTED:
+                record.reject()
+            else:
+                record.status = golden_status
         return await self.golden_repo.update(record)
 
     async def delete(self, record_id: str) -> bool:
@@ -62,11 +66,19 @@ class GoldenDatasetUseCase:
 
     async def approve(self, record_id: str) -> GoldenRecord:
         """审批通过单条记录"""
-        return await self.golden_repo.update_status(record_id, GoldenStatus.APPROVED)
+        record = await self.golden_repo.get_by_id(record_id)
+        if record is None:
+            raise ValueError(f"黄金记录 {record_id} 不存在")
+        record.approve()
+        return await self.golden_repo.update(record)
 
     async def reject(self, record_id: str) -> GoldenRecord:
         """拒绝单条记录"""
-        return await self.golden_repo.update_status(record_id, GoldenStatus.REJECTED)
+        record = await self.golden_repo.get_by_id(record_id)
+        if record is None:
+            raise ValueError(f"黄金记录 {record_id} 不存在")
+        record.reject()
+        return await self.golden_repo.update(record)
 
     async def batch_approve(self, record_ids: list[str]) -> int:
         """批量审批通过"""
