@@ -29,7 +29,26 @@ text2vec-large-chinese	512/1024	1024	老牌中文模型，有的版本支持 102
 
 -> multi-level heading
 
+# DDD + CA
 
 聚合根对应一个 Repository，聚合根内部的子对象不对外暴露，也没有自己的 Repository。
 
 聚合根是整个聚合的唯一对外入口，普通 Entity 只在聚合内部存在，不对外暴露。
+
+## Entity从贫血到充血
+1. 判断哪些业务规则应该从 Use Case 移回 Entity。
+永远成立的约束 → 放 Entity
+业务场景的流程 → 放 Use Case
+
+单个对象自己就能判断的 → Entity
+需要外部信息、其他对象、或协调多方的 → Use Case
+
+纯函数 →  放 Entity
+副作用 → 放 Use Case
+
+2. 领域事件
+有多个不同的下游订阅方 → 加上事件收集
+否则不用加 → 避免过度设计
+
+3. 保护不变量
+有复杂状态流转再加

@@ -5,7 +5,8 @@ from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPo
 from rag.infra.database.connection import get_pool
 
 _SELECT = """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
-                     status, retrieved_chunk_ids, is_hit, hit_rank, evaluated_at, created_at, metadata"""
+                     status, retrieved_chunk_ids, is_hit, hit_rank, evaluated_at,
+                     created_at, updated_at, metadata"""
 
 
 class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
@@ -66,7 +67,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
                 f"""UPDATE golden_dataset
                    SET query = $1, ground_truth_chunks = $2, reference_answer = $3,
                        status = $4, retrieved_chunk_ids = $5, is_hit = $6, hit_rank = $7,
-                       evaluated_at = $8, metadata = $9
+                       evaluated_at = $8, metadata = $9, updated_at = now()
                    WHERE id = $10
                    RETURNING {_SELECT.replace('SELECT ', '')}""",
                 record.query,
@@ -91,13 +92,13 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
                 "DELETE FROM golden_dataset WHERE id = $1",
                 _to_uuid(record_id),
             )
-        return result == "DELETE 1"
+            return result == "DELETE 1"
 
     async def update_status(self, record_id: str, status: str) -> GoldenRecord:
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"""UPDATE golden_dataset SET status = $1 WHERE id = $2
+                f"""UPDATE golden_dataset SET status = $1, updated_at = now() WHERE id = $2
                    RETURNING {_SELECT.replace('SELECT ', '')}""",
                 status,
                 _to_uuid(record_id),
@@ -112,7 +113,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             result = await conn.execute(
-                "UPDATE golden_dataset SET status = $1 WHERE id = ANY($2::uuid[])",
+                "UPDATE golden_dataset SET status = $1, updated_at = now() WHERE id = ANY($2::uuid[])",
                 status,
                 record_ids,
             )
@@ -158,5 +159,6 @@ def _row_to_record(row) -> GoldenRecord:
         hit_rank=row["hit_rank"],
         evaluated_at=row["evaluated_at"],
         created_at=row["created_at"],
+        updated_at=row["updated_at"],
         metadata=metadata,
     )

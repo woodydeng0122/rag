@@ -5,7 +5,7 @@ from rag.domain.ports.project_repository import ProjectRepositoryPort
 
 
 class EmbedModelUseCase:
-    """嵌入模型 CRUD 用例 — 含名称唯一校验、本地模型自动检测、删除前项目引用检查"""
+    """嵌入模型 CRUD 用例 — 名称唯一校验、创建流程编排、删除前项目引用检查"""
 
     def __init__(
         self,
@@ -24,25 +24,21 @@ class EmbedModelUseCase:
         return await self._repo.get_by_id(model_id)
 
     async def create(self, name: str, dimension: int = 0, description: str = "", config: dict | None = None) -> EmbedModel:
-        """创建模型 — 校验名称唯一，尝试从本地 config.json 自动填充维度"""
+        """创建模型 — 校验名称唯一，尝试从本地 config.json 自动填充维度和状态"""
         existing = await self._repo.get_by_name(name)
         if existing:
             raise ValueError(f"模型名称已存在: {name}")
 
-        # 如果未传 config，尝试从本地模型目录读取配置
+        # 业务场景：如果未传 config，尝试从本地模型目录读取
         if config is None:
-            model_config = self._scanner.read_config(name)
-            if model_config:
-                dimension = model_config.get("hidden_size", dimension)
-                config = model_config
-                status = ModelStatus.ONLINE
-            else:
-                status = ModelStatus.OFFLINE
-        else:
-            status = ModelStatus.ONLINE if config else ModelStatus.OFFLINE
+            config = self._scanner.read_config(name)
 
-        if not dimension:
-            raise ValueError("无法确定向量维度：本地未找到模型且未指定 dimension")
+        # 业务场景：有 config → online，无 config → offline；config 可覆盖 dimension
+        if config:
+            dimension = config.get("hidden_size", dimension)
+            status = ModelStatus.ONLINE
+        else:
+            status = ModelStatus.OFFLINE
 
         model = EmbedModel(
             name=name,
@@ -51,6 +47,8 @@ class EmbedModelUseCase:
             status=status,
             config=config or {},
         )
+        model.ensure_complete()
+
         return await self._repo.save(model)
 
     async def update(self, model_id: str, name: str, description: str = "") -> EmbedModel:
@@ -63,8 +61,7 @@ class EmbedModelUseCase:
         if same_name and same_name.id != model_id:
             raise ValueError(f"模型名称已存在: {name}")
 
-        existing.name = name
-        existing.description = description
+        existing.update_profile(name, description)
         return await self._repo.update(existing)
 
     async def delete(self, model_id: str) -> bool:

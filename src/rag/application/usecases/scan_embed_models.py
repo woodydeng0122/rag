@@ -19,21 +19,23 @@ class ScanEmbedModelsUseCase:
         scanned = self._scanner.scan()
         scanned_names = {s.name for s in scanned}
 
-        # 2. Upsert 扫描到的模型（status=online）
+        # 2. Upsert 扫描到的模型 — 业务场景：本地存在 → online
         for s in scanned:
+            dimension = s.metadata.get("hidden_size", s.dimension)
             model = EmbedModel(
                 name=s.name,
-                dimension=s.dimension,
+                dimension=dimension,
                 status=ModelStatus.ONLINE,
                 config=s.metadata,
             )
             await self._repo.save(model)
 
-        # 3. 将不在本地的模型标记为 offline
+        # 3. 将不在本地的模型标记为 offline — 业务场景：本地不存在 → offline
         all_models = await self._repo.get_all()
         for m in all_models:
             if m.name not in scanned_names and m.is_online:
-                await self._repo.update_status(m.id, ModelStatus.OFFLINE)
+                m.go_offline()
+                await self._repo.update_status(m.id, m.status)
 
         # 4. 返回更新后的完整列表
         return await self._repo.get_all()
