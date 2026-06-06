@@ -1,4 +1,4 @@
-from rag.domain.entities.document import Document
+from rag.domain.entities.document import Document, DocumentStatus, SplitterConfig
 from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.infra.database.connection import get_pool
 
@@ -8,29 +8,30 @@ class PgDocumentRepository(DocumentRepositoryPort):
 
     async def save(self, document: Document) -> Document:
         pool = get_pool()
+        cfg = document.splitter_config
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """INSERT INTO document (
-                    project_id, filename, file_path, file_size, file_type,
+                    project_id, filename, storage_key, file_size, file_type,
                     checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars
                 ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-                RETURNING id, project_id, filename, file_path, file_size, file_type,
+                RETURNING id, project_id, filename, storage_key, file_size, file_type,
                     checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at""",
                 _to_uuid(document.project_id),
                 document.filename,
-                document.file_path,
+                document.storage_key,
                 document.file_size,
                 document.file_type,
                 document.checksum,
-                document.status,
-                document.splitter_strategy,
-                document.chunk_size,
-                document.chunk_overlap,
-                document.splitter_min_chars,
-                document.splitter_max_chars,
+                document.status.value,
+                cfg.strategy,
+                cfg.chunk_size,
+                cfg.chunk_overlap,
+                cfg.min_chars,
+                cfg.max_chars,
             )
         return _row_to_document(row)
 
@@ -38,7 +39,7 @@ class PgDocumentRepository(DocumentRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT id, project_id, filename, file_path, file_size, file_type,
+                """SELECT id, project_id, filename, storage_key, file_size, file_type,
                     checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at
@@ -53,7 +54,7 @@ class PgDocumentRepository(DocumentRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT id, project_id, filename, file_path, file_size, file_type,
+                """SELECT id, project_id, filename, storage_key, file_size, file_type,
                     checksum, status, splitter_strategy,
                     chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
                     chunk_count, error_message, created_at, updated_at
@@ -62,18 +63,18 @@ class PgDocumentRepository(DocumentRepositoryPort):
             )
         return [_row_to_document(row) for row in rows]
 
-    async def update_status(self, document_id: str, status: str, error_message: str = "") -> None:
+    async def update_status(self, document_id: str, status: DocumentStatus, error_message: str = "") -> None:
         pool = get_pool()
         async with pool.acquire() as conn:
             if error_message:
                 await conn.execute(
                     "UPDATE document SET status = $1, error_message = $2, updated_at = now() WHERE id = $3",
-                    status, error_message, _to_uuid(document_id),
+                    status.value, error_message, _to_uuid(document_id),
                 )
             else:
                 await conn.execute(
                     "UPDATE document SET status = $1, updated_at = now() WHERE id = $2",
-                    status, _to_uuid(document_id),
+                    status.value, _to_uuid(document_id),
                 )
 
     async def update_chunk_count(self, document_id: str, chunk_count: int) -> None:
@@ -103,16 +104,18 @@ def _row_to_document(row) -> Document:
         id=str(row["id"]),
         project_id=str(row["project_id"]),
         filename=row["filename"],
-        file_path=row["file_path"],
+        storage_key=row["storage_key"],
         file_size=row["file_size"],
         file_type=row["file_type"],
         checksum=row["checksum"],
-        status=row["status"],
-        splitter_strategy=row["splitter_strategy"],
-        chunk_size=row["chunk_size"],
-        chunk_overlap=row["chunk_overlap"],
-        splitter_min_chars=row["splitter_min_chars"],
-        splitter_max_chars=row["splitter_max_chars"],
+        status=DocumentStatus(row["status"]),
+        splitter_config=SplitterConfig(
+            strategy=row["splitter_strategy"],
+            chunk_size=row["chunk_size"],
+            chunk_overlap=row["chunk_overlap"],
+            min_chars=row["splitter_min_chars"],
+            max_chars=row["splitter_max_chars"],
+        ),
         chunk_count=row["chunk_count"],
         error_message=row["error_message"] or "",
         created_at=row["created_at"],

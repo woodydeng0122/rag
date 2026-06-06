@@ -1,28 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse
-from rag.api.schemas.golden_dataset import GoldenDatasetResponse
+from rag.api.schemas.document import DocumentResponse, DocumentListResponse, ProcessDocumentResponse, BatchProcessRequest, BatchProcessResponse, BatchProcessItem, ChunkResponse, ChunkListResponse, SourceContentResponse, EmbeddingResponse, SplitterConfigSchema
+from rag.api.schemas.golden_dataset import GoldenDatasetResponse, EvaluationMetricsResponse
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.document import DocumentStatus
 from rag.shared.logger import logger
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
 
 def _doc_to_response(d) -> DocumentResponse:
+    cfg = d.splitter_config
     return DocumentResponse(
         id=d.id,
         project_id=d.project_id,
         filename=d.filename,
-        file_path=d.file_path,
+        storage_key=d.storage_key,
         file_size=d.file_size,
         file_type=d.file_type,
         checksum=d.checksum,
         status=d.status,
-        splitter_strategy=d.splitter_strategy,
-        chunk_size=d.chunk_size,
-        chunk_overlap=d.chunk_overlap,
-        splitter_min_chars=d.splitter_min_chars,
-        splitter_max_chars=d.splitter_max_chars,
+        splitter_config=SplitterConfigSchema(
+            strategy=cfg.strategy,
+            chunk_size=cfg.chunk_size,
+            chunk_overlap=cfg.chunk_overlap,
+            min_chars=cfg.min_chars,
+            max_chars=cfg.max_chars,
+        ),
         chunk_count=d.chunk_count,
         error_message=d.error_message,
         created_at=d.created_at.isoformat() if d.created_at else "",
@@ -143,7 +147,8 @@ async def get_chunk_embedding(
     return EmbeddingResponse(
         chunk_id=embedding.chunk_id,
         vector=embedding.vector,
-        dimension=len(embedding.vector),
+        dimension=embedding.dimension,
+        embedder_model=embedding.embedder_model,
     )
 
 
@@ -191,11 +196,13 @@ async def get_chunk_golden_records(
             query=r.query,
             ground_truth_chunks=r.ground_truth_chunks,
             reference_answer=r.reference_answer or "",
-            status=r.status,
-            retrieved_chunk_ids=r.retrieved_chunk_ids or [],
-            is_hit=r.is_hit,
-            hit_rank=r.hit_rank,
-            evaluated_at=r.evaluated_at.isoformat() if r.evaluated_at else None,
+            status=r.status.value if hasattr(r.status, "value") else r.status,
+            evaluation=EvaluationMetricsResponse(
+                retrieved_chunk_ids=r.evaluation.retrieved_chunk_ids or [],
+                is_hit=r.evaluation.is_hit,
+                hit_rank=r.evaluation.hit_rank,
+                evaluated_at=r.evaluation.evaluated_at.isoformat() if r.evaluation and r.evaluation.evaluated_at else None,
+            ) if r.evaluation else None,
             created_at=r.created_at.isoformat() if r.created_at else "",
             metadata=r.metadata if r.metadata else {},
         )
@@ -226,7 +233,7 @@ async def batch_process_documents(
         except Exception as e:
             results.append(BatchProcessItem(
                 id=doc_id,
-                status="error",
+                status=DocumentStatus.ERROR,
                 error_message=str(e),
             ))
             failed_count += 1

@@ -1,4 +1,4 @@
-from rag.domain.entities.embed_model import EmbedModel, ModelStatus
+from rag.domain.entities.embed_model import EmbedModel, ModelConfig, ModelStatus
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.model_scanner import ModelScannerPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
@@ -33,9 +33,11 @@ class EmbedModelUseCase:
         if config is None:
             config = self._scanner.read_config(name)
 
-        # 业务场景：有 config → online，无 config → offline；config 可覆盖 dimension
+        model_config = ModelConfig.from_dict(config)
+
+        # 业务场景：有 config → online，无 config → offline；config.hidden_size 可覆盖 dimension
         if config:
-            dimension = config.get("hidden_size", dimension)
+            dimension = model_config.hidden_size or dimension
             status = ModelStatus.ONLINE
         else:
             status = ModelStatus.OFFLINE
@@ -45,9 +47,8 @@ class EmbedModelUseCase:
             dimension=dimension,
             description=description,
             status=status,
-            config=config or {},
+            config=model_config,
         )
-        model.ensure_complete()
 
         return await self._repo.save(model)
 

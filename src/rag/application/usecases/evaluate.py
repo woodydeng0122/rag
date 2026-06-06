@@ -1,7 +1,7 @@
 import time as _time
 from datetime import datetime
 
-from rag.domain.entities.golden_record import GoldenRecord
+from rag.domain.entities.golden_record import GoldenRecord, EvaluationMetrics
 from rag.domain.ports.retriever import RetrieverPort
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
@@ -52,7 +52,6 @@ class EvaluateUseCase:
         for record in records:
             results = await self.retriever.retrieve(record.query, project_id=project_id, top_k=max_k)
             retrieved_ids = [r.chunk_id for r in results]
-            record.set_retrieved(retrieved_ids)
 
             # 计算命中信息
             gt_ids = set(record.ground_truth_chunks)
@@ -64,9 +63,12 @@ class EvaluateUseCase:
                     hit_rank = i
                     break
 
-            record.is_hit = is_hit
-            record.hit_rank = hit_rank
-            record.evaluated_at = datetime.now()
+            record.evaluation = EvaluationMetrics(
+                retrieved_chunk_ids=retrieved_ids,
+                is_hit=is_hit,
+                hit_rank=hit_rank,
+                evaluated_at=datetime.now(),
+            )
 
             # 持久化单条评测结果
             await self.golden_repo.update(record)

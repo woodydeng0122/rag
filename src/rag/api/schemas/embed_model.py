@@ -1,6 +1,12 @@
+from enum import Enum
+
 from pydantic import BaseModel
 
-from rag.domain.entities.embed_model import ModelStatus
+
+class EmbedModelStatus(str, Enum):
+    """API 层模型状态枚举 — 与领域层解耦"""
+    ONLINE = "online"
+    OFFLINE = "offline"
 
 
 class EmbedModelItem(BaseModel):
@@ -8,7 +14,7 @@ class EmbedModelItem(BaseModel):
     name: str
     dimension: int
     description: str = ""
-    status: ModelStatus = ModelStatus.OFFLINE
+    status: EmbedModelStatus = EmbedModelStatus.OFFLINE
     config: dict = {}
     created_at: str = ""
     updated_at: str = ""

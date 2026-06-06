@@ -12,6 +12,15 @@ class UpdateProjectRequest(BaseModel):
     description: str = ""
 
 
+class EvalSummaryResponse(BaseModel):
+    recall_at_10: float | None = None
+    mrr: float | None = None
+    answerable: int | None = None
+    total: int | None = None
+    latency_avg_ms: float | None = None
+    evaluated_at: str | None = None
+
+
 class ProjectResponse(BaseModel):
     id: str
     name: str
@@ -21,13 +30,7 @@ class ProjectResponse(BaseModel):
     embed_dimension: int = 512
     created_at: str = ""
     updated_at: str = ""
-    # 评测汇总字段
-    eval_recall_at_10: float | None = None
-    eval_mrr: float | None = None
-    eval_answerable: int | None = None
-    eval_total: int | None = None
-    eval_latency_avg_ms: float | None = None
-    evaluated_at: str | None = None
+    eval_summary: EvalSummaryResponse | None = None
 
 
 class ProjectListResponse(BaseModel):

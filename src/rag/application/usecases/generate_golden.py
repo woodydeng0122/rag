@@ -1,12 +1,11 @@
 import asyncio
 import json
 import logging
-from datetime import datetime
 
 from rag.domain.entities.chunk import Chunk
 from rag.domain.entities.generate_config import GenerateConfig
-from rag.domain.entities.generation_task import GenerationTask
-from rag.domain.entities.golden_record import GoldenRecord
+from rag.domain.entities.generation_task import GenerationTask, TaskStatus
+from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.generation_task_repository import GenerationTaskRepositoryPort
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
@@ -57,16 +56,16 @@ class GenerateGoldenUseCase:
             raise ValueError("必须提供 document_ids 或 chunk_ids")
 
         total_chunks = sum(len(v) for v in chunks_by_doc.values())
-        estimated_total = total_chunks * config.per_chunk
+        estimated_total = config.estimate_total(total_chunks)
 
         # 创建任务
         task = GenerationTask(
             project_id=project_id,
-            status="running",
+            status=TaskStatus.RUNNING,
             total=estimated_total,
             document_ids=document_ids or [],
             chunk_ids=chunk_ids or [],
-            config=config.to_dict(),
+            config=config,
         )
         task = await self.task_repo.save(task)
 
@@ -95,15 +94,12 @@ class GenerateGoldenUseCase:
                 else:
                     await self._process_chunk_batches(task, project_id, chunks, config)
 
-            task.status = "completed"
-            task.finished_at = datetime.now()
+            task.complete()
             await self.task_repo.update(task)
 
         except Exception as e:
             logger.exception("生成任务 %s 异常", task.id)
-            task.status = "failed"
-            task.error_message = str(e)[:500]
-            task.finished_at = datetime.now()
+            task.fail(str(e))
             await self.task_repo.update(task)
 
     async def _process_whole_doc(
@@ -148,14 +144,14 @@ class GenerateGoldenUseCase:
             result = self.llm.generate_json(prompt)
         except ValueError:
             logger.warning("整篇文档 Phase 1 失败，跳过文档")
-            task.failed += n_questions
+            task.record_failure(n_questions)
             await self.task_repo.update(task)
             return
 
         questions = result.get("items", result) if isinstance(result, dict) else result
         if not isinstance(questions, list):
             logger.warning("Phase 1 返回格式异常，跳过文档")
-            task.failed += n_questions
+            task.record_failure(n_questions)
             await self.task_repo.update(task)
             return
 
@@ -209,14 +205,14 @@ class GenerateGoldenUseCase:
             result = self.llm.generate_json(prompt)
         except ValueError:
             logger.warning("批次 Phase 1 失败，跳过")
-            task.failed += n_questions
+            task.record_failure(n_questions)
             await self.task_repo.update(task)
             return
 
         questions = result.get("items", result) if isinstance(result, dict) else result
         if not isinstance(questions, list):
             logger.warning("Phase 1 返回格式异常，跳过批次")
-            task.failed += n_questions
+            task.record_failure(n_questions)
             await self.task_repo.update(task)
             return
 
@@ -243,7 +239,7 @@ class GenerateGoldenUseCase:
         difficulty = question.get("difficulty", "medium")
 
         if not query:
-            task.failed += 1
+            task.record_failure()
             await self.task_repo.update(task)
             return
 
@@ -271,7 +267,7 @@ class GenerateGoldenUseCase:
                 supporting_quotes = answer_result.get("supporting_quotes", [])
             except ValueError:
                 logger.warning("Phase 2 失败，query: %s", query[:50])
-                task.failed += 1
+                task.record_failure()
                 await self.task_repo.update(task)
                 return
 
@@ -293,12 +289,12 @@ class GenerateGoldenUseCase:
             query=query,
             ground_truth_chunks=gt_chunks,
             reference_answer=reference_answer,
-            status="pending_review",
+            status=GoldenStatus.PENDING_REVIEW,
             metadata=metadata,
         )
         await self.golden_repo.save(record)
 
-        task.completed += 1
+        task.record_success()
         await self.task_repo.update(task)
 
     @staticmethod

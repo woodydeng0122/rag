@@ -1,5 +1,6 @@
 from rag.domain.entities.chunk import Chunk
-from rag.domain.entities.document import Document
+from rag.domain.entities.document import Document, DocumentStatus
+from rag.domain.entities.embedding import Embedding
 from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
@@ -38,8 +39,6 @@ class ProcessDocumentUseCase:
         doc = await self._document_repo.get_by_id(document_id)
         if doc is None:
             raise ValueError(f"文档不存在: {document_id}")
-        if doc.status not in ("uploaded", "error", "chunking", "embedding"):
-            raise ValueError(f"文档状态不允许处理: {doc.status}，仅 uploaded / error / chunking / embedding 可处理")
 
         # 2. 从项目获取嵌入模型
         project = await self._project_repo.get_by_id(doc.project_id)
@@ -59,55 +58,49 @@ class ProcessDocumentUseCase:
             text = self._load_text(doc)
 
             # 4. 分块
-            await self._document_repo.update_status(document_id, "chunking")
-            chunks = self._splitter.split(text, **self._build_splitter_kwargs(doc))
+            doc.start_chunking()
+            await self._document_repo.update_status(document_id, doc.status)
+            chunks = self._splitter.split(text, **doc.splitter_config.to_splitter_kwargs())
 
             for i, chunk in enumerate(chunks):
-                chunk.id = f"{document_id}_chunk_{i}"
-                chunk.index = i
-                chunk.source_file = doc.file_path
+                chunk.assign_identity(document_id, i, doc.storage_key)
 
             await self._chunk_repo.save_batch(chunks, document_id=document_id)
-            await self._document_repo.update_status(document_id, "chunked")
-            await self._document_repo.update_chunk_count(document_id, len(chunks))
+            doc.finish_chunking(len(chunks))
+            await self._document_repo.update_status(document_id, doc.status)
+            await self._document_repo.update_chunk_count(document_id, doc.chunk_count)
 
             # 5. 嵌入
-            await self._document_repo.update_status(document_id, "embedding")
+            doc.start_embedding()
+            await self._document_repo.update_status(document_id, doc.status)
             texts = [c.content for c in chunks]
             vectors = embedder.embed(texts)
 
             # 6. 保存嵌入
-            from rag.domain.entities.embedding import Embedding
             embeddings = [
-                Embedding(chunk_id=c.id, vector=v)
+                Embedding(chunk_id=c.id, vector=v, embedder_model=embed_model.name)
                 for c, v in zip(chunks, vectors)
             ]
-            await self._embedding_repo.save_batch(embeddings, embedder_model=embed_model.name)
-            await self._document_repo.update_status(document_id, "embedded")
+            await self._embedding_repo.save_batch(embeddings)
+            doc.finish_embedding()
+            await self._document_repo.update_status(document_id, doc.status)
 
             # 7. 完成
-            await self._document_repo.update_status(document_id, "ready")
+            doc.mark_ready()
+            await self._document_repo.update_status(document_id, doc.status)
 
         except Exception as e:
-            await self._document_repo.update_status(document_id, "error", str(e))
+            doc.mark_error(str(e))
+            await self._document_repo.update_status(document_id, doc.status, doc.error_message)
             raise
 
         return await self._document_repo.get_by_id(document_id)
 
     def _load_text(self, doc: Document) -> str:
-        """根据文件类型加载文本"""
+        """根据文件类型加载文本 — 需要外部 FileLoaderPort，留在 Use Case"""
         if doc.file_type == "pdf":
-            return self._loader.load_file_pdf(doc.file_path)
-        elif doc.file_type in ("md", "txt"):
-            return self._loader.load_file_txt(doc.file_path)
+            return self._loader.load_file_pdf(doc.storage_key)
+        elif doc.is_text_file:
+            return self._loader.load_file_txt(doc.storage_key)
         else:
             raise ValueError(f"不支持的文件类型: {doc.file_type}")
-
-    @staticmethod
-    def _build_splitter_kwargs(doc: Document) -> dict:
-        """根据文档的分块策略构建参数"""
-        if doc.splitter_strategy == "fixed":
-            return {"chunk_size": doc.chunk_size, "overlap": doc.chunk_overlap}
-        elif doc.splitter_strategy == "section_heading":
-            return {"min_chars": doc.splitter_min_chars, "max_chars": doc.splitter_max_chars}
-        return {}

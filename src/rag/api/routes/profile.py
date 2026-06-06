@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/profile", tags=["profile"])
 def _profile_to_response(p: Profile) -> ProfileResponse:
     return ProfileResponse(
         id=p.id,
-        active_project_id=p.active_project_id if p.active_project_id else None,
+        active_project_id=p.active_project_id,
     )
 
 

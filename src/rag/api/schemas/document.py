@@ -1,20 +1,26 @@
 from pydantic import BaseModel
 
+from rag.domain.entities.document import DocumentStatus, SplitterConfig
+
+
+class SplitterConfigSchema(BaseModel):
+    strategy: str = "section_heading"
+    chunk_size: int = 500
+    chunk_overlap: int = 50
+    min_chars: int = 200
+    max_chars: int = 2000
+
 
 class DocumentResponse(BaseModel):
     id: str
     project_id: str
     filename: str
-    file_path: str
+    storage_key: str
     file_size: int
     file_type: str
     checksum: str
-    status: str
-    splitter_strategy: str = "section_heading"
-    chunk_size: int = 500
-    chunk_overlap: int = 50
-    splitter_min_chars: int = 200
-    splitter_max_chars: int = 2000
+    status: DocumentStatus
+    splitter_config: SplitterConfigSchema
     chunk_count: int = 0
     error_message: str = ""
     created_at: str = ""
@@ -75,3 +81,4 @@ class EmbeddingResponse(BaseModel):
     chunk_id: str
     vector: list[float]
     dimension: int
+    embedder_model: str = ""

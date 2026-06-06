@@ -1,12 +1,13 @@
 import json
 
-from rag.domain.entities.generation_task import GenerationTask
+from rag.domain.entities.generate_config import GenerateConfig
+from rag.domain.entities.generation_task import GenerationTask, TaskStatus
 from rag.domain.ports.generation_task_repository import GenerationTaskRepositoryPort
 from rag.infra.database.connection import get_pool
 
 _SELECT = """SELECT id, project_id, status, total, completed, failed,
                      document_ids, chunk_ids, config, error_message,
-                     created_at, finished_at"""
+                     created_at, updated_at, finished_at"""
 
 
 class PgGenerationTaskRepository(GenerationTaskRepositoryPort):
@@ -22,13 +23,13 @@ class PgGenerationTaskRepository(GenerationTaskRepositoryPort):
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING {_SELECT.replace('SELECT ', '')}""",
                 _to_uuid(task.project_id),
-                task.status,
+                task.status.value,
                 task.total,
                 task.completed,
                 task.failed,
                 task.document_ids,
                 task.chunk_ids,
-                json.dumps(task.config) if task.config else "{}",
+                _config_to_json(task.config),
                 task.error_message,
             )
         return _row_to_task(row)
@@ -63,13 +64,13 @@ class PgGenerationTaskRepository(GenerationTaskRepositoryPort):
                        error_message = $8, finished_at = $9
                    WHERE id = $10
                    RETURNING {_SELECT.replace('SELECT ', '')}""",
-                task.status,
+                task.status.value,
                 task.total,
                 task.completed,
                 task.failed,
                 task.document_ids,
                 task.chunk_ids,
-                json.dumps(task.config) if task.config else "{}",
+                _config_to_json(task.config),
                 task.error_message,
                 task.finished_at,
                 _to_uuid(task.id),
@@ -83,19 +84,26 @@ def _to_uuid(value: str) -> str:
     return value
 
 
+def _config_to_json(config: GenerateConfig | None) -> str:
+    """将 GenerateConfig 序列化为 JSON 字符串"""
+    if config is None:
+        return "{}"
+    return json.dumps(config.to_dict())
+
+
 def _row_to_task(row) -> GenerationTask:
     config_raw = row["config"]
     if isinstance(config_raw, str):
-        config = json.loads(config_raw)
+        config = GenerateConfig.from_dict(json.loads(config_raw))
     elif isinstance(config_raw, dict):
-        config = config_raw
+        config = GenerateConfig.from_dict(config_raw)
     else:
-        config = {}
+        config = None
 
-    return GenerationTask(
+    return GenerationTask.reconstruct(
         id=str(row["id"]),
         project_id=str(row["project_id"]),
-        status=row["status"],
+        status=TaskStatus(row["status"]),
         total=row["total"],
         completed=row["completed"],
         failed=row["failed"],
@@ -104,5 +112,6 @@ def _row_to_task(row) -> GenerationTask:
         config=config,
         error_message=row["error_message"] or "",
         created_at=row["created_at"],
+        updated_at=row.get("updated_at"),
         finished_at=row["finished_at"],
     )

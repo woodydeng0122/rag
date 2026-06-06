@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 
 from rag.api.schemas.upload import UploadResponse
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.document import SplitterConfig
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
 
@@ -20,16 +21,20 @@ async def upload_documents(
     file_content = await file.read()
     filename = file.filename or "unknown"
 
+    splitter_config = SplitterConfig(
+        strategy=splitter_strategy,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        min_chars=splitter_min_chars,
+        max_chars=splitter_max_chars,
+    )
+
     try:
         documents = await container.upload_usecase.execute(
             project_id=project_id,
             filename=filename,
             file_content=file_content,
-            splitter_strategy=splitter_strategy,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            splitter_min_chars=splitter_min_chars,
-            splitter_max_chars=splitter_max_chars,
+            splitter_config=splitter_config,
         )
     except ValueError as e:
         from fastapi import HTTPException

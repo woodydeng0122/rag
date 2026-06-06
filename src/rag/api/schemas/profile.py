@@ -6,5 +6,5 @@ class UpdateProfileRequest(BaseModel):
 
 
 class ProfileResponse(BaseModel):
-    id: int = 1
+    id: int | None = None
     active_project_id: str | None = None

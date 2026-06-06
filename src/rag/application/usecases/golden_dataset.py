@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from rag.domain.entities.golden_record import GoldenRecord
+from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 
@@ -42,7 +42,8 @@ class GoldenDatasetUseCase:
 
     async def list_by_project(self, project_id: str, status: str | None = None) -> list[GoldenRecord]:
         if status:
-            return await self.golden_repo.list_by_project_and_status(project_id, status)
+            golden_status = GoldenStatus(status)
+            return await self.golden_repo.list_by_project_and_status(project_id, golden_status)
         return await self.golden_repo.list_by_project(project_id)
 
     async def update(self, record_id: str, query: str, ground_truth_chunks: list[str], reference_answer: str = "", status: str | None = None) -> GoldenRecord:
@@ -53,7 +54,7 @@ class GoldenDatasetUseCase:
         record.ground_truth_chunks = ground_truth_chunks
         record.reference_answer = reference_answer
         if status is not None:
-            record.status = status
+            record.status = GoldenStatus(status)
         return await self.golden_repo.update(record)
 
     async def delete(self, record_id: str) -> bool:
@@ -61,19 +62,19 @@ class GoldenDatasetUseCase:
 
     async def approve(self, record_id: str) -> GoldenRecord:
         """审批通过单条记录"""
-        return await self.golden_repo.update_status(record_id, "approved")
+        return await self.golden_repo.update_status(record_id, GoldenStatus.APPROVED)
 
     async def reject(self, record_id: str) -> GoldenRecord:
         """拒绝单条记录"""
-        return await self.golden_repo.update_status(record_id, "rejected")
+        return await self.golden_repo.update_status(record_id, GoldenStatus.REJECTED)
 
     async def batch_approve(self, record_ids: list[str]) -> int:
         """批量审批通过"""
-        return await self.golden_repo.batch_update_status(record_ids, "approved")
+        return await self.golden_repo.batch_update_status(record_ids, GoldenStatus.APPROVED)
 
     async def batch_reject(self, record_ids: list[str]) -> int:
         """批量拒绝"""
-        return await self.golden_repo.batch_update_status(record_ids, "rejected")
+        return await self.golden_repo.batch_update_status(record_ids, GoldenStatus.REJECTED)
 
     async def list_by_chunk_id(self, chunk_id: str, project_id: str) -> list[GoldenRecord]:
         """查询分块关联的黄金记录"""

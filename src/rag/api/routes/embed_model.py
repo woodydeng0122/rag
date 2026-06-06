@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from rag.api.schemas.embed_model import (
-    EmbedModelItem, EmbedModelListResponse,
+    EmbedModelItem, EmbedModelListResponse, EmbedModelStatus,
     CreateEmbedModelRequest, UpdateEmbedModelRequest,
 )
 from rag.bootstrap.container import Container, get_container
@@ -15,8 +15,8 @@ def _model_to_item(m) -> EmbedModelItem:
         name=m.name,
         dimension=m.dimension,
         description=m.description,
-        status=m.status,
-        config=m.config or {},
+        status=EmbedModelStatus(m.status.value),
+        config=m.config.to_dict(),
         created_at=m.created_at.isoformat() if m.created_at else "",
         updated_at=m.updated_at.isoformat() if m.updated_at else "",
     )

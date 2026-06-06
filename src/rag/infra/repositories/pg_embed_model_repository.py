@@ -1,6 +1,6 @@
 import json
 
-from rag.domain.entities.embed_model import EmbedModel, ModelStatus
+from rag.domain.entities.embed_model import EmbedModel, ModelConfig, ModelStatus
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.infra.database.connection import get_pool
 
@@ -18,7 +18,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                     dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                 RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
                 model.name, model.dimension, model.description, model.status.value,
-                json.dumps(model.config, ensure_ascii=False),
+                json.dumps(model.config.to_dict(), ensure_ascii=False),
             )
         return _row_to_model(row)
 
@@ -36,7 +36,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
                         dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
                     RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
                     m.name, m.dimension, m.description, m.status.value,
-                    json.dumps(m.config, ensure_ascii=False),
+                    json.dumps(m.config.to_dict(), ensure_ascii=False),
                 )
                 results.append(_row_to_model(row))
         return results
@@ -71,22 +71,14 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
             return None
         return _row_to_model(row)
 
-    async def update_status(self, model_id: str, status: ModelStatus) -> None:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE embed_model SET status = $1, updated_at = now() WHERE id = $2",
-                status.value, model_id,
-            )
-
     async def update(self, model: EmbedModel) -> EmbedModel:
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """UPDATE embed_model SET name = $1, description = $2, updated_at = now()
-                WHERE id = $3
+                """UPDATE embed_model SET name = $1, description = $2, status = $3, updated_at = now()
+                WHERE id = $4
                 RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
-                model.name, model.description, model.id,
+                model.name, model.description, model.status.value, model.id,
             )
         if row is None:
             raise ValueError(f"嵌入模型 {model.id} 不存在")
@@ -107,13 +99,13 @@ def _row_to_model(row) -> EmbedModel:
     if isinstance(config, str):
         import json as _json
         config = _json.loads(config)
-    return EmbedModel(
+    return EmbedModel.reconstruct(
         id=str(row["id"]),
         name=row["name"],
         dimension=row["dimension"],
         description=row["description"] or "",
         status=ModelStatus(row["status"]),
-        config=config or {},
+        config=ModelConfig.from_dict(config),
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

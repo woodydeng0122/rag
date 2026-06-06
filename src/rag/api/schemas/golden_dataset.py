@@ -11,7 +11,14 @@ class UpdateGoldenDatasetRequest(BaseModel):
     query: str | None = Field(None, description="查询文本")
     ground_truth_chunks: list[str] | None = Field(None, description="关联的真实分块 ID 列表")
     reference_answer: str | None = Field(None, description="参考答案")
-    status: str | None = Field(None, description="状态: approved / rejected / pending_review")
+    status: str | None = Field(None, description="状态: pending_review / approved / rejected")
+
+
+class EvaluationMetricsResponse(BaseModel):
+    retrieved_chunk_ids: list[str] = Field(default_factory=list)
+    is_hit: bool | None = None
+    hit_rank: int | None = None
+    evaluated_at: str | None = None
 
 
 class GoldenDatasetResponse(BaseModel):
@@ -21,10 +28,7 @@ class GoldenDatasetResponse(BaseModel):
     ground_truth_chunks: list[str]
     reference_answer: str = ""
     status: str = "approved"
-    retrieved_chunk_ids: list[str] = Field(default_factory=list)
-    is_hit: bool | None = None
-    hit_rank: int | None = None
-    evaluated_at: str | None = None
+    evaluation: EvaluationMetricsResponse | None = None
     created_at: str = ""
     metadata: dict = Field(default_factory=dict)
 
@@ -74,6 +78,7 @@ class GenerationTaskResponse(BaseModel):
     config: dict = Field(default_factory=dict)
     error_message: str = ""
     created_at: str = ""
+    updated_at: str | None = None
     finished_at: str | None = None
 
 

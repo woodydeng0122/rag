@@ -1,5 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+
+
+@dataclass
+class ProjectEvalSummary:
+    """项目评测汇总值对象 — 独立于项目元数据，评测指标变更不影响 Project"""
+    recall_at_10: float | None = None
+    mrr: float | None = None
+    answerable: int | None = None
+    total: int | None = None
+    latency_avg_ms: float | None = None
+    evaluated_at: datetime | None = None
 
 
 @dataclass
@@ -12,10 +23,4 @@ class Project:
     embed_dimension: int = 512
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    # 评测汇总字段
-    eval_recall_at_10: float | None = None
-    eval_mrr: float | None = None
-    eval_answerable: int | None = None
-    eval_total: int | None = None
-    eval_latency_avg_ms: float | None = None
-    evaluated_at: datetime | None = None
+    eval_summary: ProjectEvalSummary | None = field(default=None, repr=False)

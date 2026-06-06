@@ -14,10 +14,11 @@ def recall_at_k(
 
     for record in records:
         gt_ids = set(record.ground_truth_chunks)
+        retrieved = record.evaluation.retrieved_chunk_ids if record.evaluation else []
         hit_any = False
         for k in k_list:
-            retrieved_ids = set(record.retrieved_ids[:k])
-            if gt_ids & retrieved_ids:
+            retrieved_set = set(retrieved[:k])
+            if gt_ids & retrieved_set:
                 hits[k] += 1
                 hit_any = True
         if not hit_any:
@@ -37,8 +38,9 @@ def calc_mrr(records: list[GoldenRecord]) -> float:
 
     for record in records:
         gt_ids = set(record.ground_truth_chunks)
+        retrieved = record.evaluation.retrieved_chunk_ids if record.evaluation else []
         rank = 0
-        for i, chunk_id in enumerate(record.retrieved_ids, start=1):
+        for i, chunk_id in enumerate(retrieved, start=1):
             if chunk_id in gt_ids:
                 rank = i
                 break

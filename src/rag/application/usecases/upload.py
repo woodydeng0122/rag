@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 from uuid import uuid4
 
-from rag.domain.entities.document import Document
+from rag.domain.entities.document import Document, DocumentStatus, SplitterConfig
 from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.domain.ports.file_storage import FileStoragePort
 
@@ -29,12 +29,9 @@ class UploadUseCase:
         project_id: str,
         filename: str,
         file_content: bytes,
-        splitter_strategy: str = "section_heading",
-        chunk_size: int = 500,
-        chunk_overlap: int = 50,
-        splitter_min_chars: int = 200,
-        splitter_max_chars: int = 2000,
+        splitter_config: SplitterConfig | None = None,
     ) -> list[Document]:
+        config = splitter_config or SplitterConfig()
         upload_id = str(uuid4())
         docs_dir = f"docs/{upload_id}"
         self._file_storage.mkdir(docs_dir)
@@ -43,9 +40,7 @@ class UploadUseCase:
         ext = Path(filename).suffix.lower()
         if ext in ALLOWED_ARCHIVE_EXTENSIONS:
             return await self._handle_zip(
-                file_content, docs_dir, upload_id, project_id,
-                splitter_strategy, chunk_size, chunk_overlap,
-                splitter_min_chars, splitter_max_chars,
+                file_content, docs_dir, upload_id, project_id, config,
             )
         else:
             # 单文件
@@ -53,23 +48,19 @@ class UploadUseCase:
                 allowed = ALLOWED_EXTENSIONS | ALLOWED_ARCHIVE_EXTENSIONS
                 raise ValueError(f"不支持的文件类型: {ext}，仅支持 {allowed}")
 
-            file_path = f"{docs_dir}/{filename}"
-            self._file_storage.write_bytes(file_path, file_content)
+            storage_key = f"{docs_dir}/{filename}"
+            self._file_storage.write_bytes(storage_key, file_content)
             checksum = hashlib.sha256(file_content).hexdigest()
 
             doc = Document(
                 project_id=project_id,
                 filename=filename,
-                file_path=file_path,
+                storage_key=storage_key,
                 file_size=len(file_content),
                 file_type=ext.lstrip("."),
                 checksum=checksum,
-                status="uploaded",
-                splitter_strategy=splitter_strategy,
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-                splitter_min_chars=splitter_min_chars,
-                splitter_max_chars=splitter_max_chars,
+                status=DocumentStatus.UPLOADED,
+                splitter_config=config,
             )
             saved = await self._document_repo.save(doc)
             return [saved]
@@ -80,11 +71,7 @@ class UploadUseCase:
         docs_dir: str,
         upload_id: str,
         project_id: str,
-        splitter_strategy: str,
-        chunk_size: int,
-        chunk_overlap: int,
-        splitter_min_chars: int,
-        splitter_max_chars: int,
+        splitter_config: SplitterConfig,
     ) -> list[Document]:
         """解压 zip 并为每个支持的文件创建 document 记录"""
         zip_buffer = io.BytesIO(file_content)
@@ -102,26 +89,22 @@ class UploadUseCase:
 
                 # 保持目录结构解压
                 entry_content = zf.read(entry)
-                target_path = f"{docs_dir}/{entry}"
-                parent_dir = str(Path(target_path).parent)
+                target_key = f"{docs_dir}/{entry}"
+                parent_dir = str(Path(target_key).parent)
                 self._file_storage.mkdir(parent_dir)
-                self._file_storage.write_bytes(target_path, entry_content)
+                self._file_storage.write_bytes(target_key, entry_content)
 
                 checksum = hashlib.sha256(entry_content).hexdigest()
 
                 doc = Document(
                     project_id=project_id,
                     filename=Path(entry).name,
-                    file_path=target_path,
+                    storage_key=target_key,
                     file_size=len(entry_content),
                     file_type=ext.lstrip("."),
                     checksum=checksum,
-                    status="uploaded",
-                    splitter_strategy=splitter_strategy,
-                    chunk_size=chunk_size,
-                    chunk_overlap=chunk_overlap,
-                    splitter_min_chars=splitter_min_chars,
-                    splitter_max_chars=splitter_max_chars,
+                    status=DocumentStatus.UPLOADED,
+                    splitter_config=splitter_config,
                 )
                 saved = await self._document_repo.save(doc)
                 documents.append(saved)

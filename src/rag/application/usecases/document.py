@@ -54,8 +54,8 @@ class DocumentUseCase:
         doc = await self._document_repo.get_by_id(document_id)
         if doc is None:
             raise ValueError(f"文档 {document_id} 不存在")
-        if doc.file_type == "pdf":
-            raise ValueError("PDF 文件不支持源文件预览")
-        if not self._file_storage.exists(doc.file_path):
-            raise FileNotFoundError(f"源文件不存在: {doc.file_path}")
-        return self._file_storage.read_text(doc.file_path)
+        if not doc.is_text_file:
+            raise ValueError(f"{doc.file_type} 文件不支持源文件预览")
+        if not self._file_storage.exists(doc.storage_key):
+            raise FileNotFoundError(f"源文件不存在: {doc.storage_key}")
+        return self._file_storage.read_text(doc.storage_key)

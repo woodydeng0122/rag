@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from rag.domain.entities.golden_record import GoldenRecord
+
+from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 
 
 class GoldenDatasetRepositoryPort(ABC):
@@ -22,14 +23,14 @@ class GoldenDatasetRepositoryPort(ABC):
 
     @abstractmethod
     async def list_by_project_and_status(
-        self, project_id: str, status: str
+        self, project_id: str, status: GoldenStatus
     ) -> list[GoldenRecord]: ...
 
     @abstractmethod
-    async def update_status(self, record_id: str, status: str) -> GoldenRecord: ...
+    async def update_status(self, record_id: str, status: GoldenStatus) -> GoldenRecord: ...
 
     @abstractmethod
-    async def batch_update_status(self, record_ids: list[str], status: str) -> int: ...
+    async def batch_update_status(self, record_ids: list[str], status: GoldenStatus) -> int: ...
 
     @abstractmethod
     async def list_by_chunk_id(self, chunk_id: str, project_id: str) -> list[GoldenRecord]: ...

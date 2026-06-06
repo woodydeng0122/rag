@@ -6,7 +6,7 @@ from rag.infra.database.connection import get_pool
 class PgEmbeddingRepository(EmbeddingRepositoryPort):
     """PostgreSQL + pgvector 实现的嵌入仓储"""
 
-    async def save_batch(self, embeddings: list[Embedding], embedder_model: str = "") -> None:
+    async def save_batch(self, embeddings: list[Embedding]) -> None:
         if not embeddings:
             return
         pool = get_pool()
@@ -16,7 +16,7 @@ class PgEmbeddingRepository(EmbeddingRepositoryPort):
                 VALUES ($1, $2::vector, $3)
                 ON CONFLICT (chunk_id) DO UPDATE SET vector = $2::vector, embedder_model = $3""",
                 [
-                    (e.chunk_id, _vector_to_str(e.vector), embedder_model)
+                    (e.chunk_id, _vector_to_str(e.vector), e.embedder_model)
                     for e in embeddings
                 ],
             )
@@ -32,14 +32,14 @@ class PgEmbeddingRepository(EmbeddingRepositoryPort):
             return None
         vector_str = row["vector"]
         vector = [float(v) for v in vector_str.strip("[]").split(",")]
-        return Embedding(chunk_id=row["chunk_id"], vector=vector)
+        return Embedding(chunk_id=row["chunk_id"], vector=vector, embedder_model=row.get("embedder_model", ""))
 
     async def list_by_project(self, project_id: str) -> list[Embedding]:
         """按项目查询所有嵌入向量"""
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT e.chunk_id, e.vector
+                """SELECT e.chunk_id, e.vector, e.embedder_model
                    FROM embedding e
                    JOIN chunk c ON e.chunk_id = c.id
                    JOIN document d ON c.document_id = d.id
@@ -57,4 +57,4 @@ def _vector_to_str(vector: list[float]) -> str:
 def _row_to_embedding(row) -> Embedding:
     vector_str = row["vector"]
     vector = [float(v) for v in vector_str.strip("[]").split(",")]
-    return Embedding(chunk_id=row["chunk_id"], vector=vector)
+    return Embedding(chunk_id=row["chunk_id"], vector=vector, embedder_model=row.get("embedder_model", ""))
