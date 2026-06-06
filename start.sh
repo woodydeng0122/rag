@@ -27,7 +27,7 @@ if [ "$RAG_START" = "docker" ]; then
         RAW_DB_URL="$(grep '^DATABASE_URL=' .env | head -1 | cut -d'=' -f2-)"
         export DATABASE_URL="$(echo "$RAW_DB_URL" | sed 's/@localhost:/@host.docker.internal:/')"
     fi
-    exec docker compose -f "$PROJECT_DIR/docker-compose.yml" up --build
+    docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
 else
     echo "[START] 本地模式启动..."
     if ! python -c "import rag" 2>/dev/null; then
@@ -36,3 +36,5 @@ else
     fi
     exec python -m rag api
 fi
+
+cd rag-web && pnpm dev
