@@ -102,6 +102,7 @@ def build_container(settings: Settings | None = None) -> Container:
         embedder_pool=embedder_pool,
         embedding_repo=pg_embedding_repo,
         embed_model_repo=pg_embed_model_repo,
+        project_repo=pg_project_repo,
     )
 
     # 用例组装

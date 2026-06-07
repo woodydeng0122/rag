@@ -3,6 +3,7 @@ from rag.domain.value_objects.retrieval_result import RetrievalResult
 from rag.domain.ports.embedder_pool import EmbedderPoolPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
+from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.retriever import RetrieverPort
 
 
@@ -14,10 +15,12 @@ class CosineRetriever(RetrieverPort):
         embedder_pool: EmbedderPoolPort,
         embedding_repo: EmbeddingRepositoryPort,
         embed_model_repo: EmbedModelRepositoryPort,
+        project_repo: ProjectRepositoryPort,
     ):
         self._embedder_pool = embedder_pool
         self._embedding_repo = embedding_repo
         self._embed_model_repo = embed_model_repo
+        self._project_repo = project_repo
 
     async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievalResult]:
         # 从 PG 按项目加载嵌入
@@ -25,18 +28,13 @@ class CosineRetriever(RetrieverPort):
         if not embeddings:
             return []
 
-        # 获取项目关联的嵌入模型名（用于选择正确的 embedder）
-        # 从第一条嵌入记录获取 embedder_model 字段
+        # 获取项目关联的嵌入模型
         embedder_model_name = ""
-        if embeddings:
-            # 尝试从 embedding 表获取模型名
-            pool = self._embedding_repo
-            # 简化：使用 embed_model_repo 查找所有在线模型，取第一个
-            # TODO: 后续可通过 project 表的 embed_model_id 精确查找
-            models = await self._embed_model_repo.get_all()
-            online_models = [m for m in models if m.is_online]
-            if online_models:
-                embedder_model_name = online_models[0].name
+        project = await self._project_repo.get_by_id(project_id)
+        if project and project.embed_model_id:
+            embed_model = await self._embed_model_repo.get_by_id(project.embed_model_id)
+            if embed_model and embed_model.is_online:
+                embedder_model_name = embed_model.name
 
         if not embedder_model_name:
             return []

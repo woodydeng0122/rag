@@ -4,10 +4,10 @@ from rag.api.schemas.evaluate import EvaluateByProjectRequest
 from rag.application.results.evaluate_result import EvaluateResult
 from rag.bootstrap.container import Container, get_container
 
-router = APIRouter(prefix="/evaluate", tags=["评测"])
+router = APIRouter(prefix="/api/projects/{project_id}", tags=["评测"])
 
 
-@router.post("/projects/{project_id}", response_model=EvaluateResult)
+@router.post("/evaluations", response_model=EvaluateResult)
 async def evaluate_by_project(
     project_id: str,
     req: EvaluateByProjectRequest,
