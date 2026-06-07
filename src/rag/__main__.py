@@ -24,10 +24,7 @@ def main():
     from rag.cli.evaluate import register_args as eval_args, handle as eval_handle
     register_command("eval", help="评测", dependency="full_container", register_args=eval_args, handler=eval_handle)
 
-    from rag.cli.golden import register_args as golden_args, handle as golden_handle
-    register_command("add-golden", help="将黄金数据集 item JSON 写入黄金数据集表", dependency="full_container", register_args=golden_args, handler=golden_handle)
-
-    from rag.api.app import register_args as api_args, handle as api_handle
+    from rag.cli.api import register_args as api_args, handle as api_handle
     register_command("api", help="启动 API 服务", dependency="full_container", register_args=api_args, handler=api_handle)
 
     # ── 构建 argparse ─────────────────────────────────────
