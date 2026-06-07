@@ -13,11 +13,11 @@ class ChunkResponse(BaseModel):
     heading: str = ""
 
 
-class RetrievedChunkResponse(BaseModel):
+class RetrieveResult(BaseModel):
     chunk_id: str
     score: float
     chunk: ChunkResponse | None = None
 
 
 class RetrieveResponse(BaseModel):
-    results: list[RetrievedChunkResponse]
+    results: list[RetrieveResult]

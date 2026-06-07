@@ -7,7 +7,7 @@ from rag.domain.value_objects.project_eval_summary import ProjectEvalSummary
 from rag.domain.ports.retriever import RetrieverPort
 from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
-from rag.domain.services.metrics import recall_at_k, calc_mrr
+from rag.application.results.metrics import recall_at_k, calc_mrr
 from rag.application.results.evaluate_result import EvaluateResult
 
 
