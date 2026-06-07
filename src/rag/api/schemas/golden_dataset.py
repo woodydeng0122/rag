@@ -48,11 +48,24 @@ class ImportGoldenDatasetResponse(BaseModel):
 
 class GenerateConfigSchema(BaseModel):
     per_chunk: int = Field(2, description="每 chunk 生成问题数")
-    question_types: dict[str, float] | None = Field(None, description="问题类型及占比")
+    question_types: list[str] | dict[str, float] | None = Field(None, description="问题类型列表或类型及占比")
     difficulty: str = Field("mixed", description="难度: easy / medium / hard / mixed")
     user_persona: str = Field("开发者", description="用户群体描述")
     chunk_batch_size: int = Field(3, description="大文件每轮 chunk 数")
     file_char_threshold: int = Field(5000, description="文件字符数阈值")
+
+    def resolve_question_types(self) -> dict[str, float] | None:
+        """将 list[str] 均分转换为 dict[str, float]，dict 直接返回"""
+        if self.question_types is None:
+            return None
+        if isinstance(self.question_types, dict):
+            return self.question_types
+        # list[str] → 均分占比
+        count = len(self.question_types)
+        if count == 0:
+            return None
+        share = round(1.0 / count, 4)
+        return {t: share for t in self.question_types}
 
 
 class GenerateGoldenRequest(BaseModel):

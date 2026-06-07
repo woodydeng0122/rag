@@ -159,7 +159,7 @@ async def generate_golden_dataset(
     if req.config:
         config = GenerateConfig(
             per_chunk=req.config.per_chunk,
-            question_types=req.config.question_types or config.question_types,
+            question_types=req.config.resolve_question_types() or config.question_types,
             difficulty=req.config.difficulty,
             user_persona=req.config.user_persona,
             chunk_batch_size=req.config.chunk_batch_size,

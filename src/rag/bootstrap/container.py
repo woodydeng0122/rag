@@ -34,7 +34,7 @@ _container: Container | None = None
 
 def build_container(settings: Settings | None = None) -> Container:
     global _container
-    
+
     print("[LOAD] 加载用例模块...", flush=True)
     from rag.application.usecases.ask import AskUseCase
     from rag.application.usecases.retrieve import RetrieveUseCase
@@ -60,8 +60,9 @@ def build_container(settings: Settings | None = None) -> Container:
     from rag.infra.repositories.pg_generation_task_repository import PgGenerationTaskRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
 
-    print("[LOAD] 加载基础设施模块...", flush=True)
+    print("[LOAD] 加载基础设施模块[SentenceTransformerEmbedder]...", flush=True)
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
+    print("[LOAD] 加载其他基础设施模块...", flush=True)
     from rag.infra.embedder.model_scanner import ModelScanner
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.cosine_retriever import CosineRetriever
