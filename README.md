@@ -74,11 +74,48 @@ Adapter: Port 的具体实现，负责把外部技术适配成内层期望的接
 直觉匹配：
 - 这个逻辑自然地属于哪个对象？ 如果哪个都不自然，就是领域服务。
 
+## 领域事件设计
+
+**职责分工**
+
+| 角色 | 层 | 负责什么 |
+|---|---|---|
+| 事件定义 | Domain/events | 定义事件 |
+| 聚合根 | Domain | 收集事件，不发布 |
+| Use Case | Application | 发布事件 |
+| Event Handler | Application | 响应事件，跨聚合协调 |
+| EventBus | Infrastructure | 分发事件给订阅方 |
+| Bootstrap | Application 入口 | 注册订阅关系 |
+
+---
+
+**事件流**
+
+```
+聚合根.events.append(XxxEvent)   # Domain：只收集
+    ↓
+Use Case 发布 event_bus.publish() # Application：发布
+    ↓
+EventBus 分发                     # Infrastructure：路由
+    ↓
+Handler1 / Handler2 / Handler3   # Application：各自响应
+    ↓
+失败 → 发布补偿事件 → 补偿 Handler  # Saga 模式
+```
+
+**设计原则**
+
+- 一个事件对应多个独立 Handler（单一职责）
+- 新增响应逻辑只加 Handler，不改已有代码（开闭原则）
+- Handler 做幂等处理，保证重复执行安全
+- 事件和聚合根一起持久化，保证不丢失
+
+
 ## Use Case
 职责：定义业务场景的流程。
 下游：Controller
-XxxCommand   → application/commands/   # Use Case 写操作入参
-XxxQuery     → application/queries/    # Use Case 读操作入参
-XxxResult    → application/results/    # Use Case 出参
-XxxRequest   → api/schemas/            # HTTP 请求体
-XxxResponse  → api/schemas/            # HTTP 响应体，包装 Result
+
+## 跨聚合一致性
+方案一：强一致性（数据库事务）
+方案二：最终一致性（领域事件）
+同一个数据库内的操作用强一致性，跨服务或高并发用最终一致性。

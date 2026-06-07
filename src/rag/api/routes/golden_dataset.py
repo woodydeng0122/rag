@@ -83,6 +83,17 @@ async def list_golden_datasets(
     return [_record_to_response(r) for r in records]
 
 
+@router.get("/documents/{document_id}/golden-datasets", response_model=list[GoldenDatasetResponse])
+async def list_golden_datasets_by_document(
+    project_id: str,
+    document_id: str,
+    container: Container = Depends(get_container),
+):
+    """按文档 ID 查询关联的黄金记录"""
+    records = await container.golden_dataset_usecase.list_by_document(project_id, document_id)
+    return [_record_to_response(r) for r in records]
+
+
 @router.post("/golden-datasets", response_model=GoldenDatasetResponse)
 async def create_golden_dataset(
     project_id: str,

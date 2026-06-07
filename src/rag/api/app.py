@@ -15,11 +15,13 @@ from .routes.profile import router as profile_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
 from rag.bootstrap.startup import startup, shutdown
+from rag.bootstrap.container import get_container
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await startup()
+    container = get_container()
+    await startup(container)
     yield
     await shutdown()
 

@@ -31,7 +31,3 @@ class ProjectResponse(BaseModel):
     created_at: str = ""
     updated_at: str = ""
     eval_summary: EvalSummaryResponse | None = None
-
-
-class ProjectListResponse(BaseModel):
-    projects: list[ProjectResponse]

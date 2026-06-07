@@ -1,34 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
-from rag.application.usecases.ask import AskUseCase
-from rag.application.usecases.retrieve import RetrieveUseCase
-from rag.application.usecases.evaluate import EvaluateUseCase
-from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
-from rag.application.usecases.generate_golden import GenerateGoldenUseCase
-from rag.application.usecases.upload import UploadUseCase
-from rag.application.usecases.process_document import ProcessDocumentUseCase
-from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
-from rag.application.usecases.project import ProjectUseCase
-from rag.application.usecases.document import DocumentUseCase
-from rag.application.usecases.embed_model import EmbedModelUseCase
-from rag.application.usecases.profile import ProfileUseCase
-from rag.application.task_manager import TaskManager
-from rag.infra.repositories.pg_project_repository import PgProjectRepository
-from rag.infra.repositories.pg_document_repository import PgDocumentRepository
-from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
-from rag.infra.repositories.pg_embedding_repository import PgEmbeddingRepository
-from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
-from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
-from rag.infra.repositories.pg_generation_task_repository import PgGenerationTaskRepository
-from rag.infra.repositories.pg_profile_repository import PgProfileRepository
-from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
-from rag.infra.embedder.model_scanner import ModelScanner
-from rag.infra.embedder.embedder_pool import EmbedderPool
-from rag.infra.retriever.cosine_retriever import CosineRetriever
-from rag.infra.llm.dashscope_llm import DashScopeLLM
-from rag.infra.loader.file_document_loader import FileDocumentLoader
-from rag.infra.splitter.section_heading_splitter import SectionHeadingSplitter
-from rag.infra.storage.local_file_storage import LocalFileStorage
 from rag.bootstrap.settings import Settings
 
 
@@ -36,23 +9,23 @@ from rag.bootstrap.settings import Settings
 class Container:
     """组合根容器 — 持有所有用例实例和配置"""
     # 用例
-    upload_usecase: UploadUseCase
-    process_document_usecase: ProcessDocumentUseCase
-    golden_dataset_usecase: GoldenDatasetUseCase
-    generate_golden_usecase: GenerateGoldenUseCase
-    scan_embed_models_usecase: ScanEmbedModelsUseCase
-    project_usecase: ProjectUseCase
-    document_usecase: DocumentUseCase
-    embed_model_usecase: EmbedModelUseCase
-    profile_usecase: ProfileUseCase
-    ask: AskUseCase
-    retrieve: RetrieveUseCase
-    evaluate: EvaluateUseCase
+    upload_usecase: object
+    process_document_usecase: object
+    golden_dataset_usecase: object
+    generate_golden_usecase: object
+    scan_embed_models_usecase: object
+    project_usecase: object
+    document_usecase: object
+    embed_model_usecase: object
+    profile_usecase: object
+    ask: object
+    retrieve: object
+    evaluate: object
     settings: Settings
     # 基础设施
-    model_scanner: ModelScanner
+    model_scanner: object
     # 任务管理
-    task_manager: TaskManager
+    task_manager: object
 
 
 # 模块级单例
@@ -60,12 +33,45 @@ _container: Container | None = None
 
 
 def build_container(settings: Settings | None = None) -> Container:
-    """组合根 — 唯一知道具体实现的地方"""
+    global _container
+    
+    print("[LOAD] 加载用例模块...", flush=True)
+    from rag.application.usecases.ask import AskUseCase
+    from rag.application.usecases.retrieve import RetrieveUseCase
+    from rag.application.usecases.evaluate import EvaluateUseCase
+    from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
+    from rag.application.usecases.generate_golden import GenerateGoldenUseCase
+    from rag.application.usecases.upload import UploadUseCase
+    from rag.application.usecases.process_document import ProcessDocumentUseCase
+    from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
+    from rag.application.usecases.project import ProjectUseCase
+    from rag.application.usecases.document import DocumentUseCase
+    from rag.application.usecases.embed_model import EmbedModelUseCase
+    from rag.application.usecases.profile import ProfileUseCase
+    from rag.application.task_manager import TaskManager
 
-    if settings is None:
-        settings = Settings.from_env()
+    print("[LOAD] 加载仓储模块...", flush=True)
+    from rag.infra.repositories.pg_project_repository import PgProjectRepository
+    from rag.infra.repositories.pg_document_repository import PgDocumentRepository
+    from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
+    from rag.infra.repositories.pg_embedding_repository import PgEmbeddingRepository
+    from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
+    from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
+    from rag.infra.repositories.pg_generation_task_repository import PgGenerationTaskRepository
+    from rag.infra.repositories.pg_profile_repository import PgProfileRepository
+
+    print("[LOAD] 加载基础设施模块...", flush=True)
+    from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
+    from rag.infra.embedder.model_scanner import ModelScanner
+    from rag.infra.embedder.embedder_pool import EmbedderPool
+    from rag.infra.retriever.cosine_retriever import CosineRetriever
+    from rag.infra.llm.dashscope_llm import DashScopeLLM
+    from rag.infra.loader.file_document_loader import FileDocumentLoader
+    from rag.infra.splitter.section_heading_splitter import SectionHeadingSplitter
+    from rag.infra.storage.local_file_storage import LocalFileStorage
 
     # PG 仓储
+    print("[INIT] 初始化 PG 仓储...", flush=True)
     pg_project_repo = PgProjectRepository()
     pg_document_repo = PgDocumentRepository()
     pg_chunk_repo = PgChunkRepository()
@@ -150,7 +156,7 @@ def build_container(settings: Settings | None = None) -> Container:
         project_repo=pg_project_repo,
     )
 
-    return Container(
+    _container = Container(
         upload_usecase=upload_usecase,
         process_document_usecase=process_document_usecase,
         golden_dataset_usecase=golden_dataset_usecase,
@@ -167,6 +173,8 @@ def build_container(settings: Settings | None = None) -> Container:
         model_scanner=model_scanner,
         task_manager=TaskManager(),
     )
+
+    return _container
 
 
 def get_container() -> Container:

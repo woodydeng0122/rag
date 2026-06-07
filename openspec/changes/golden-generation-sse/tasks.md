@@ -42,17 +42,31 @@
 
 - [x] 7.1 修改 `POST /golden-datasets/generate`，使用 GenerationTaskRunner + TaskManager 替代原有 UseCase
 
-## 8. 前端 — 生成面板组件
+## 8. 前端 — 生成 Drawer 组件（重构为 DocumentList 场景）
 
-- [x] 8.1 新建 `GenerationPanel.vue` 组件，可折叠面板展示生成过程
-- [x] 8.2 面板顶部展示进度条（completed/total/failed）和控制按钮（暂停/继续/取消）
-- [x] 8.3 面板主体按文档分组展示 Phase 1 问题列表和 Phase 2 答案流式输出
-- [x] 8.4 失败项旁显示 [重试] 按钮
-- [x] 8.5 使用 `EventSource` 消费 SSE 事件流，解析事件类型渲染 UI
+- [x] 8.1 重构 `GenerationPanel.vue` → `GenerationDrawer.vue`，改为 Drawer 形式，接收 taskId + projectId
+- [x] 8.2 Drawer 顶部展示进度条（completed/total/failed）和控制按钮（暂停/继续/取消）
+- [x] 8.3 Drawer 新增"参数摘要"区域，展示关键参数（每分块题数、用户画像、问题类型）
+- [x] 8.4 Drawer 主体展示"模型输出"区域：Phase 1 问题列表 + Phase 2 答案流式输出
+- [x] 8.5 失败项旁显示 [重试] 按钮
+- [x] 8.6 使用 `EventSource` 消费 SSE 事件流，解析事件类型渲染 UI
+- [x] 8.7 SSE 断线重连逻辑：重新建立 EventSource，从 progress 事件恢复状态
 
-## 9. 前端 — 集成到 GoldenDataset.vue
+## 9. 前端 — 集成到 DocumentList.vue
 
-- [x] 9.1 在 GoldenDataset.vue 中引入 GenerationPanel 组件
-- [x] 9.2 修改 `handleGenerate` 方法，提交任务后打开面板并建立 SSE 连接
-- [x] 9.3 生成过程中用户可继续操作表格（面板不阻塞表格交互）
-- [x] 9.4 SSE 断线重连逻辑：重新建立 EventSource，从 progress 事件恢复面板状态
+- [x] 9.1 回滚 GoldenDataset.vue 中的 GenerationPanel 集成（移除 import、状态变量、模板）
+- [x] 9.2 在 DocumentList.vue 中引入 GenerationDrawer 组件
+- [x] 9.3 修改"黄金数据集"列渲染逻辑：
+  - 无记录 + 文档 ready → 显示 [生成] 按钮
+  - 生成中 → 显示"生成中(N)"蓝色链接，点击开 Drawer
+  - 已完成 → 显示数字绿色链接，点击开 Drawer
+- [x] 9.4 新增生成参数弹窗：点击 [生成] → 弹窗选择参数（每分块题数、用户画像、问题类型）→ [开始生成]
+- [x] 9.5 修改 `handleGenerateGolden`：提交任务后更新该行"黄金数据集"列为"生成中(0)"，记录 taskId 映射
+- [x] 9.6 点击"生成中(N)"时打开 Drawer，建立 SSE 连接实时展示
+- [x] 9.7 点击已完成数字时打开 Drawer，展示已生成的记录列表（只读模式）
+- [x] 9.8 工具栏新增 [批量生成] 按钮：勾选多文档 → 参数弹窗 → 批量提交 → 各行状态更新
+
+## 10. 前端 — 回滚 GoldenDataset.vue
+
+- [x] 10.1 移除 GoldenDataset.vue 中的 GenerationPanel 引用和生成面板相关代码
+- [x] 10.2 恢复 GoldenDataset.vue 的 generate 流程为原始行为（仅提交任务，不打开面板）

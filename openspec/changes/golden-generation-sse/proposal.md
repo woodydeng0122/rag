@@ -9,8 +9,11 @@
 - 新增 `LLMPort.astream()` 异步流式生成方法，逐 token 输出
 - 新增任务控制接口：暂停、继续、取消、重试失败项
 - `TaskStatus` 新增 `paused`、`cancelled` 状态
-- 前端新增内嵌生成面板，实时展示 SSE 事件流，支持暂停/继续/取消/重试操作
-- 生成过程中用户可继续操作表格
+- 前端交互入口从 GoldenDataset 页迁移到 DocumentList 页：
+  - 文档表格"黄金数据集"列：[生成] → 参数弹窗 → 生成中(N) → 数字
+  - 点击"生成中(N)"或数字 → Drawer 展示参数摘要 + 模型输出 + 入库进度
+  - 工具栏新增 [批量生成] 按钮，支持多文档同时生成
+  - 表格状态通过用户手动刷新更新，不轮询不推送
 
 ## Capabilities
 
@@ -28,5 +31,7 @@
 - **后端核心**: `GenerateGoldenUseCase` 重构为 `GenerationTaskRunner`，引入 `asyncio.Event` 控制暂停/取消
 - **LLMPort 接口**: 新增 `astream` 抽象方法，`DashScopeLLM` 实现
 - **GenerationTask 实体**: TaskStatus 枚举新增 `paused`、`cancelled`
-- **前端**: `GoldenDataset.vue` 新增生成面板组件，使用 `EventSource` 消费 SSE
+- **前端 DocumentList.vue**: "黄金数据集"列状态流转（生成/生成中/数字），新增参数弹窗、批量生成按钮
+- **前端 GenerationDrawer.vue**: 新增 Drawer 组件，展示参数摘要 + SSE 实时模型输出 + 入库进度
+- **前端 GoldenDataset.vue**: 回滚 GenerationPanel 集成，恢复原始行为
 - **依赖**: 无新外部依赖（FastAPI 原生支持 SSE `StreamingResponse`）

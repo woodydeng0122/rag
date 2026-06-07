@@ -1,14 +1,8 @@
 import os
-import sys
 import asyncio
 import argparse
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-
-def _log(msg: str):
-    print(f"[RAG] {msg}", flush=True)
-
 
 def main():
     parser = argparse.ArgumentParser(description="RAG 应用")
@@ -38,35 +32,36 @@ def main():
     p_download.add_argument("-o", "--output", type=str, default="./models", help="模型保存目录")
 
     args = parser.parse_args()
+    print("[LOAD] 加载配置...", flush=True)
+    from rag.bootstrap.settings import Settings
+    settings = Settings.from_env()
+    print("[LOAD] 配置加载完成", flush=True)
 
     if args.command == "migrate":
-        _log("加载配置...")
-        from rag.bootstrap import Settings
-        from rag.cli import cmd_migrate
-        settings = Settings.from_env()
-        _log("配置加载完成，执行数据库迁移...")
+        print("[migrate] 执行数据库迁移...", flush=True)
         asyncio.run(cmd_migrate(settings))
         return
 
     if args.command == "download-embedding":
+        print("[download] 下载 embedding 模型...", flush=True)
         from rag.cli import cmd_download_embedding
         cmd_download_embedding(args)
         return
 
-    _log("加载配置...")
-    from rag.bootstrap import Settings, build_container
-    settings = Settings.from_env()
-    _log("配置加载完成，构建容器...")
+    print("[BUILD] 构建容器...", flush=True)
+    from rag.bootstrap.container import build_container
     container = build_container(settings)
-    _log("容器构建完成")
+    print("[BUILD] 容器构建完成", flush=True)
 
     if args.command == "api":
-        _log("加载 FastAPI 应用...")
+        print("[LOAD] 加载 FastAPI 应用...", flush=True)
         import uvicorn
         from rag.api.app import app
-        _log("启动 uvicorn 服务 (0.0.0.0:8000)...")
+        print("[START] 启动 uvicorn 服务 (0.0.0.0:8000)...", flush=True)
         uvicorn.run(app, host="0.0.0.0", port=8000)
-    elif args.command == "ask":
+        return
+    
+    if args.command == "ask":
         from rag.cli import cmd_ask
         cmd_ask(args, ask=container.ask, project_id=args.project_id)
     elif args.command == "eval":

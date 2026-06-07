@@ -155,6 +155,24 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
             )
         return {str(row["document_id"]): row["golden_count"] for row in rows}
 
+    async def list_by_document(self, project_id: str, document_id: str) -> list[GoldenRecord]:
+        """按文档 ID 查询关联的黄金记录
+
+        通过 chunk 表关联：golden_dataset.ground_truth_chunks 包含 chunk ID，
+        chunk.document_id 指向文档。
+        """
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                f"""{_SELECT} FROM golden_dataset gd
+                   JOIN chunk c ON c.id = ANY(gd.ground_truth_chunks)
+                   WHERE gd.project_id = $1 AND c.document_id = $2
+                   ORDER BY gd.created_at DESC""",
+                _to_uuid(project_id),
+                _to_uuid(document_id),
+            )
+        return [_row_to_record(row) for row in rows]
+
 
 def _to_uuid(value: str) -> str:
     return value
