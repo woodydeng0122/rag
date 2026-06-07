@@ -86,6 +86,21 @@ class PgDocumentRepository(DocumentRepositoryPort):
                 chunk_count, _to_uuid(document_id),
             )
 
+    async def get_by_storage_key(self, storage_key: str) -> Document | None:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT id, project_id, filename, storage_key, file_size, file_type,
+                    checksum, status, splitter_strategy,
+                    chunk_size, chunk_overlap, splitter_min_chars, splitter_max_chars,
+                    chunk_count, error_message, created_at, updated_at
+                FROM document WHERE storage_key = $1""",
+                storage_key,
+            )
+        if row is None:
+            return None
+        return _row_to_document(row)
+
     async def delete(self, document_id: str) -> bool:
         pool = get_pool()
         async with pool.acquire() as conn:

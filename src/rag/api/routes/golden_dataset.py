@@ -266,7 +266,10 @@ async def stream_generation_task(
                 yield f"event: task_failed\ndata: {json.dumps({'error': task.error_message})}\n\n"
             elif task.status == TaskStatus.CANCELLED:
                 yield "event: task_cancelled\ndata: {}\n\n"
-        return StreamingResponse(_final_stream(), media_type="text/event-stream")
+        return StreamingResponse(_final_stream(), media_type="text/event-stream", headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        })
 
     # 查找活跃 Runner
     runner = container.task_manager.get(task_id)
@@ -274,7 +277,10 @@ async def stream_generation_task(
         # Runner 不存在（可能服务重启），推送当前进度
         async def _progress_only():
             yield f"event: progress\ndata: {json.dumps({'completed': task.completed, 'total': task.total, 'failed': task.failed})}\n\n"
-        return StreamingResponse(_progress_only(), media_type="text/event-stream")
+        return StreamingResponse(_progress_only(), media_type="text/event-stream", headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        })
 
     async def _event_stream():
         try:
@@ -303,7 +309,10 @@ async def stream_generation_task(
             logger.exception("SSE 流异常")
             yield f"event: task_failed\ndata: {json.dumps({'error': str(e)})}\n\n"
 
-    return StreamingResponse(_event_stream(), media_type="text/event-stream")
+    return StreamingResponse(_event_stream(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+    })
 
 
 # ========== 任务控制端点 ==========

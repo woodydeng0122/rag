@@ -31,6 +31,15 @@ def main():
     p_download.add_argument("-m", "--model", type=str, required=True, help="模型名称，如 iic/nlp_gte_sentence-embedding_chinese-base")
     p_download.add_argument("-o", "--output", type=str, default="./models", help="模型保存目录")
 
+    # add-golden 子命令
+    p_golden = subparsers.add_parser("add-golden", help="将黄金数据集 item JSON 写入黄金数据集表")
+    p_golden.add_argument("-f", "--file", type=str, required=True, help="黄金数据集 item JSON 文件路径")
+    p_golden.add_argument("-p", "--project-id", type=str, required=True, help="项目 ID")
+
+    # list-chunks 子命令
+    p_chunks = subparsers.add_parser("list-chunks", help="根据文档路径查询所有分块")
+    p_chunks.add_argument("-p", "--path", type=str, required=True, help="文档路径（storage_key），如 docs/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.md")
+
     args = parser.parse_args()
     print("[LOAD] 加载配置...", flush=True)
     from rag.bootstrap.settings import Settings
@@ -64,9 +73,34 @@ def main():
     if args.command == "ask":
         from rag.cli import cmd_ask
         cmd_ask(args, ask=container.ask, project_id=args.project_id)
+    elif args.command == "add-golden":
+        from rag.cli import cmd_add_golden
+        cmd_add_golden(args, golden_dataset_usecase=container.golden_dataset_usecase, project_id=args.project_id)
     elif args.command == "eval":
         from rag.cli import cmd_eval
         cmd_eval(args, evaluate=container.evaluate, project_id=args.project_id)
+    elif args.command == "list-chunks":
+        from rag.cli.list_chunks import cmd_list_chunks
+        from rag.infra.repositories.pg_document_repository import PgDocumentRepository
+        from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
+        from rag.infra.database.connection import init_pool, close_pool
+
+        async def _run_list_chunks():
+            await init_pool(
+                host=settings.db_host,
+                port=settings.db_port,
+                database=settings.db_name,
+                user=settings.db_user,
+                password=settings.db_password,
+            )
+            try:
+                doc_repo = PgDocumentRepository()
+                chunk_repo = PgChunkRepository()
+                await cmd_list_chunks(args, document_repo=doc_repo, chunk_repo=chunk_repo)
+            finally:
+                await close_pool()
+
+        asyncio.run(_run_list_chunks())
 
 
 if __name__ == "__main__":
