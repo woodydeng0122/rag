@@ -2,7 +2,9 @@ import json
 import logging
 import re
 import time
+from collections.abc import AsyncGenerator
 from openai import OpenAI, PermissionDeniedError
+from openai import AsyncOpenAI
 from rag.domain.ports.llm import LLMPort
 
 logger = logging.getLogger(__name__)
@@ -22,6 +24,7 @@ class DashScopeLLM(LLMPort):
         self._api_key = api_key
         self._base_url = base_url
         self._model = model
+        self._async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
 
     def generate(self, prompt: str) -> str:
         client = OpenAI(api_key=self._api_key, base_url=self._base_url)
@@ -65,6 +68,69 @@ class DashScopeLLM(LLMPort):
 
             if attempt < _MAX_JSON_RETRIES:
                 logger.warning("generate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
+
+        raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
+
+    async def agenerate(self, prompt: str) -> str:
+        """异步生成文本，使用 AsyncOpenAI 不阻塞事件循环"""
+        try:
+            completion = await self._async_client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
+        except PermissionDeniedError:
+            logger.warning("DashScope 免费额度已用完。")
+            return ""
+
+        start = time.perf_counter()
+        ttfb = None
+        result = []
+        async for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                if not ttfb:
+                    ttfb = (time.perf_counter() - start) * 1000
+                    logger.info("TTFB: %.2fms", ttfb)
+                result.append(content)
+        return "".join(result)
+
+    async def astream(self, prompt: str) -> AsyncGenerator[str, None]:
+        """异步流式生成文本，逐 token yield"""
+        try:
+            completion = await self._async_client.chat.completions.create(
+                model=self._model,
+                messages=[{"role": "user", "content": prompt}],
+                stream=True,
+            )
+        except PermissionDeniedError:
+            logger.warning("DashScope 免费额度已用完。")
+            return
+
+        async for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield content
+
+    async def agenerate_json(self, prompt: str, schema: dict | None = None) -> dict:
+        """异步生成结构化 JSON 输出，内置解析和重试"""
+        enhanced_prompt = self._enhance_prompt(prompt, schema)
+
+        raw = ""
+        for attempt in range(_MAX_JSON_RETRIES + 1):
+            raw = await self.agenerate(enhanced_prompt)
+            if not raw:
+                if attempt < _MAX_JSON_RETRIES:
+                    logger.warning("agenerate_json: LLM 返回空，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
+                    continue
+                raise ValueError("LLM 返回空内容，无法解析 JSON")
+
+            parsed = self._extract_json(raw)
+            if parsed is not None:
+                return parsed
+
+            if attempt < _MAX_JSON_RETRIES:
+                logger.warning("agenerate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
 
         raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
 

@@ -92,6 +92,10 @@ class GoldenDatasetUseCase:
         """查询分块关联的黄金记录"""
         return await self.golden_repo.list_by_chunk_id(chunk_id, project_id)
 
+    async def count_golden_records_by_documents(self, document_ids: list[str]) -> dict[str, int]:
+        """按文档 ID 批量统计关联的黄金记录条数"""
+        return await self.golden_repo.count_by_document_ids(document_ids)
+
     async def import_records(self, project_id: str, records: list[dict]) -> ImportResult:
         """批量导入黄金记录，严格校验 chunk ID"""
         # 一次性加载项目所有 chunk ID，用于 O(1) 校验

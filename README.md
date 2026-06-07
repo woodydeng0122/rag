@@ -73,3 +73,12 @@ Adapter: Port 的具体实现，负责把外部技术适配成内层期望的接
 - 业务逻辑跨聚合根，或不属于任何单一 Entity → 放领域服务
 直觉匹配：
 - 这个逻辑自然地属于哪个对象？ 如果哪个都不自然，就是领域服务。
+
+## Use Case
+职责：定义业务场景的流程。
+下游：Controller
+XxxCommand   → application/commands/   # Use Case 写操作入参
+XxxQuery     → application/queries/    # Use Case 读操作入参
+XxxResult    → application/results/    # Use Case 出参
+XxxRequest   → api/schemas/            # HTTP 请求体
+XxxResponse  → api/schemas/            # HTTP 响应体，包装 Result

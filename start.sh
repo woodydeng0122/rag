@@ -30,10 +30,15 @@ if [ "$RAG_START" = "docker" ]; then
     docker compose -f "$PROJECT_DIR/docker-compose.yml" up -d
 else
     echo "[START] 本地模式启动..."
+    echo "[CHECK] 检查 rag 包是否已安装..."
     if ! python -c "import rag" 2>/dev/null; then
-        echo "Installing dependencies..."
-        pip install -e '.[dev]'
+        echo "[INSTALL] 依赖未安装，开始安装 (pip install -e '.[dev]')..."
+        pip install -e '.[dev]' --progress-bar on
+        echo "[INSTALL] 依赖安装完成"
+    else
+        echo "[CHECK] rag 包已安装，跳过安装"
     fi
+    echo "[START] 启动 rag api 服务..."
     exec python -m rag api
 fi
 

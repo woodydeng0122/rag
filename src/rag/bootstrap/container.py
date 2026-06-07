@@ -12,6 +12,7 @@ from rag.application.usecases.project import ProjectUseCase
 from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
 from rag.application.usecases.profile import ProfileUseCase
+from rag.application.task_manager import TaskManager
 from rag.infra.repositories.pg_project_repository import PgProjectRepository
 from rag.infra.repositories.pg_document_repository import PgDocumentRepository
 from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
@@ -50,6 +51,8 @@ class Container:
     settings: Settings
     # 基础设施
     model_scanner: ModelScanner
+    # 任务管理
+    task_manager: TaskManager
 
 
 # 模块级单例
@@ -162,6 +165,7 @@ def build_container(settings: Settings | None = None) -> Container:
         evaluate=evaluate,
         settings=settings,
         model_scanner=model_scanner,
+        task_manager=TaskManager(),
     )
 
 

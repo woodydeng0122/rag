@@ -51,6 +51,33 @@ description: "Guides Clean Architecture design for Python projects: layering, de
 | **Interface Adapters** | 数据转换、控制器、展示器 | Use Cases, Entities | 包含核心业务逻辑 |
 | **Frameworks & Drivers** | 框架、数据库、UI | 所有内层 | 定义业务规则 |
 
+### Domain 层核心概念
+
+| 概念 | 特征 | 示例 |
+|------|------|------|
+| **Entity** | 有唯一标识（id），可变 | User, Order |
+| **Value Object** | 无 id，不可变，通过值判等 | Money, Address, Email |
+| **Aggregate Root** | 聚合的唯一入口，对外暴露操作；收集领域事件 | Order（包含 OrderItems） |
+| **Domain Service** | 跨 Entity 的业务规则；**不知道 Repository** | PricingService, TransferService |
+| **Port（接口）** | Domain 层定义的抽象接口 | IRepository, IEmailService |
+
+> **关键约束**：Domain Service 只操作 Entity/Value Object，不依赖 Repository。需要持久化时由 Application 层的 Use Case 调用 Repository。
+
+### 三层与四层映射
+
+RE.md 的三层模型与 SKILL.md 的四层模型可以映射：
+
+```
+四层模型                          三层模型
+──────────                       ──────
+Frameworks & Drivers    ──→      Infrastructure（Adapter）
+Interface Adapters      ──→      Infrastructure（Adapter）
+Use Cases               ──→      Application（Use Case + 流程编排）
+Entities                ──→      Domain（Entity + Value Object + Aggregate Root + Domain Service + Port）
+```
+
+三层模型更简洁，适合日常沟通；四层模型更精确，适合架构审查。
+
 ## 推荐目录结构
 
 ```
@@ -70,6 +97,7 @@ src/
 │   └── results/             # 结果对象
 ├── domain/                  # 领域层
 │   ├── entities/            # 实体定义
+│   ├── value_objects/       # 值对象（无 id，不可变）
 │   ├── services/            # 领域服务
 │   ├── ports/               # 端口定义
 │   └── events/              # 领域事件
@@ -89,10 +117,19 @@ class UserRepositoryPort(ABC):
     @abstractmethod
     async def find_by_email(self, email: str) -> Optional[User]: ...
 
+class EmailServicePort(ABC):
+    @abstractmethod
+    async def send(self, to: str, subject: str, body: str) -> None: ...
+
 # 外层实现接口（适配器）
 class PostgresUserRepository(UserRepositoryPort):
     async def find_by_email(self, email: str) -> Optional[User]:
         # 具体实现
+        ...
+
+class SendGridEmailService(EmailServicePort):
+    async def send(self, to: str, subject: str, body: str) -> None:
+        # 调用 SendGrid API
         ...
 
 # 用例依赖抽象接口，不依赖具体实现
@@ -100,6 +137,8 @@ class LoginUseCase:
     def __init__(self, user_repo: UserRepositoryPort):
         self.user_repo = user_repo
 ```
+
+> **Port ↔ Adapter 对照**：`IRepository` → `RepositoryImpl`（对接 DB）；`IEmailService` → `SendGridEmailService`（对接外部服务）。
 
 ## 组合根模式
 

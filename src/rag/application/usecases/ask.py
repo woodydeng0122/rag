@@ -35,7 +35,7 @@ class AskUseCase(BaseRetrieveUseCase):
         prompt = self._build_prompt(contexts, query)
 
         # 4. LLM 生成
-        answer = self.llm.generate(prompt)
+        answer = await self.llm.agenerate(prompt)
 
         # 5. 返回完整结果
         return AskResult(

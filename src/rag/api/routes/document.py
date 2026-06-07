@@ -9,7 +9,7 @@ from rag.shared.logger import logger
 router = APIRouter(prefix="/api", tags=["documents"])
 
 
-def _doc_to_response(d) -> DocumentResponse:
+def _doc_to_response(d, golden_count: int = 0) -> DocumentResponse:
     cfg = d.splitter_config
     return DocumentResponse(
         id=d.id,
@@ -28,6 +28,7 @@ def _doc_to_response(d) -> DocumentResponse:
             max_chars=cfg.max_chars,
         ),
         chunk_count=d.chunk_count,
+        golden_record_count=golden_count,
         error_message=d.error_message,
         created_at=d.created_at.isoformat() if d.created_at else "",
         updated_at=d.updated_at.isoformat() if d.updated_at else "",
@@ -60,7 +61,9 @@ async def list_documents(
     container: Container = Depends(get_container),
 ):
     documents = await container.document_usecase.list_by_project(project_id)
-    return [_doc_to_response(d) for d in documents]
+    doc_ids = [d.id for d in documents]
+    golden_counts = await container.golden_dataset_usecase.count_golden_records_by_documents(doc_ids) if doc_ids else {}
+    return [_doc_to_response(d, golden_count=golden_counts.get(d.id, 0)) for d in documents]
 
 
 @router.delete("/documents/{document_id}")

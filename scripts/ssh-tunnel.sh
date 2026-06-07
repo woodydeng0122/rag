@@ -15,8 +15,22 @@ REMOTE_HOST="${SSH_TUNNEL_HOST:-user@remote-host}"
 LOCAL_PORT="${SSH_TUNNEL_LOCAL_PORT:-5434}"
 REMOTE_PORT="${SSH_TUNNEL_REMOTE_PORT:-5434}"
 
+# 检测端口是否在监听 (兼容 macOS / Linux / Windows Git Bash)
 is_alive() {
-    lsof -ti:"$LOCAL_PORT" -sTCP:LISTEN >/dev/null 2>&1
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti:"$LOCAL_PORT" -sTCP:LISTEN >/dev/null 2>&1
+    else
+        netstat -an 2>/dev/null | grep -q ":${LOCAL_PORT} .*LISTEN"
+    fi
+}
+
+# 获取监听端口的进程 PID (兼容 macOS / Linux / Windows Git Bash)
+get_pid() {
+    if command -v lsof >/dev/null 2>&1; then
+        lsof -ti:"$LOCAL_PORT" -sTCP:LISTEN 2>/dev/null
+    else
+        netstat -ano 2>/dev/null | grep ":${LOCAL_PORT} .*LISTEN" | awk '{print $NF}' | head -1
+    fi
 }
 
 case "${1:-status}" in
@@ -38,13 +52,13 @@ case "${1:-status}" in
             echo "隧道未运行"
             exit 0
         fi
-        pid=$(lsof -ti:"$LOCAL_PORT" -sTCP:LISTEN)
+        pid=$(get_pid)
         kill "$pid" 2>/dev/null
         echo "隧道已关闭"
         ;;
     status)
         if is_alive; then
-            pid=$(lsof -ti:"$LOCAL_PORT" -sTCP:LISTEN)
+            pid=$(get_pid)
             echo "隧道运行中 (PID: $pid, 本地端口: $LOCAL_PORT -> $REMOTE_HOST)"
         else
             echo "隧道未运行"

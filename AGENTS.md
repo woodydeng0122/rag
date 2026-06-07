@@ -13,7 +13,6 @@
 - 执行其他Python脚本前, 先运行: source .venv/bin/activate
 
 # 有代码改动时自检
-1. 是否符合: clean-architecture
-2. design-principles 逐一检查
-3. 若添加了接口，接口是否符合 restful api 规范
-4. 下一步建议
+1. 依赖方向是否符合: clean-architecture
+2. 若添加了接口，接口是否符合 restful api 规范
+3. 下一步建议

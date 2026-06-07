@@ -23,6 +23,7 @@ class DocumentResponse(BaseModel):
     status: DocumentStatus
     splitter_config: SplitterConfigSchema
     chunk_count: int = 0
+    golden_record_count: int = 0
     error_message: str = ""
     created_at: str = ""
     updated_at: str = ""

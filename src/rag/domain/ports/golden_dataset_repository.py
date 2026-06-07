@@ -34,3 +34,6 @@ class GoldenDatasetRepositoryPort(ABC):
 
     @abstractmethod
     async def list_by_chunk_id(self, chunk_id: str, project_id: str) -> list[GoldenRecord]: ...
+
+    @abstractmethod
+    async def count_by_document_ids(self, document_ids: list[str]) -> dict[str, int]: ...
