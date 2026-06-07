@@ -1,106 +1,70 @@
 import os
 import asyncio
-import argparse
+import inspect
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+
 def main():
+    from rag.cli.registry import register_command, COMMANDS
+
+    # ── 显式注册所有命令 ──────────────────────────────────
+    from rag.cli.migrate import register_args as migrate_args, handle as migrate_handle
+    register_command("migrate", help="执行数据库迁移", dependency="db", register_args=migrate_args, handler=migrate_handle)
+
+    from rag.cli.download import register_args as download_args, handle as download_handle
+    register_command("download-embedding", help="从 ModelScope 下载 embedding 模型", dependency="none", register_args=download_args, handler=download_handle)
+
+    from rag.cli.list_chunks import register_args as list_chunks_args, handle as list_chunks_handle
+    register_command("list-chunks", help="根据文档路径查询所有分块", dependency="db", register_args=list_chunks_args, handler=list_chunks_handle)
+
+    from rag.cli.ask import register_args as ask_args, handle as ask_handle
+    register_command("ask", help="提问", dependency="full_container", register_args=ask_args, handler=ask_handle)
+
+    from rag.cli.evaluate import register_args as eval_args, handle as eval_handle
+    register_command("eval", help="评测", dependency="full_container", register_args=eval_args, handler=eval_handle)
+
+    from rag.cli.golden import register_args as golden_args, handle as golden_handle
+    register_command("add-golden", help="将黄金数据集 item JSON 写入黄金数据集表", dependency="full_container", register_args=golden_args, handler=golden_handle)
+
+    from rag.api.app import register_args as api_args, handle as api_handle
+    register_command("api", help="启动 API 服务", dependency="full_container", register_args=api_args, handler=api_handle)
+
+    # ── 构建 argparse ─────────────────────────────────────
+    import argparse
     parser = argparse.ArgumentParser(description="RAG 应用")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # api 子命令
-    subparsers.add_parser("api", help="启动 API 服务")
-
-    # migrate 子命令
-    subparsers.add_parser("migrate", help="执行数据库迁移")
-
-    # ask 子命令
-    p_ask = subparsers.add_parser("ask", help="提问")
-    p_ask.add_argument("-q", "--query", type=str, required=True, help="查询内容")
-    p_ask.add_argument("-p", "--project-id", type=str, required=True, help="项目 ID")
-    p_ask.add_argument("-k", "--top-k", type=int, default=3, help="返回分块数")
-
-    # eval 子命令
-    p_eval = subparsers.add_parser("eval", help="评测")
-    p_eval.add_argument("-p", "--project-id", type=str, required=True, help="项目 ID")
-    p_eval.add_argument("-k", "--k", type=int, nargs="+", help="Recall@K 的 K 值")
-    p_eval.add_argument("-o", "--output", type=str, default="./eval_result.json", help="结果输出文件")
-
-    # download-embedding 子命令
-    p_download = subparsers.add_parser("download-embedding", help="从 ModelScope 下载 embedding 模型")
-    p_download.add_argument("-m", "--model", type=str, required=True, help="模型名称，如 iic/nlp_gte_sentence-embedding_chinese-base")
-    p_download.add_argument("-o", "--output", type=str, default="./models", help="模型保存目录")
-
-    # add-golden 子命令
-    p_golden = subparsers.add_parser("add-golden", help="将黄金数据集 item JSON 写入黄金数据集表")
-    p_golden.add_argument("-f", "--file", type=str, required=True, help="黄金数据集 item JSON 文件路径")
-    p_golden.add_argument("-p", "--project-id", type=str, required=True, help="项目 ID")
-
-    # list-chunks 子命令
-    p_chunks = subparsers.add_parser("list-chunks", help="根据文档路径查询所有分块")
-    p_chunks.add_argument("-p", "--path", type=str, required=True, help="文档路径（storage_key），如 docs/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.md")
+    for cmd in COMMANDS:
+        p = subparsers.add_parser(cmd.name, help=cmd.help)
+        cmd.register_args(p)
 
     args = parser.parse_args()
+
+    # 查找匹配命令
+    cmd = next(c for c in COMMANDS if c.name == args.command)
+
+    # 加载配置
     print("[LOAD] 加载配置...", flush=True)
     from rag.bootstrap.settings import Settings
     settings = Settings.from_env()
     print("[LOAD] 配置加载完成", flush=True)
 
-    if args.command == "migrate":
-        print("[migrate] 执行数据库迁移...", flush=True)
-        asyncio.run(cmd_migrate(settings))
-        return
+    # 按依赖级别分派
+    if cmd.dependency == "none":
+        cmd.handler(args)
 
-    if args.command == "download-embedding":
-        print("[download] 下载 embedding 模型...", flush=True)
-        from rag.cli import cmd_download_embedding
-        cmd_download_embedding(args)
-        return
+    elif cmd.dependency == "db":
+        result = cmd.handler(args, settings)
+        if inspect.iscoroutine(result):
+            asyncio.run(result)
 
-    print("[BUILD] 构建容器...", flush=True)
-    from rag.bootstrap.container import build_container
-    container = build_container(settings)
-    print("[BUILD] 容器构建完成", flush=True)
-
-    if args.command == "api":
-        print("[LOAD] 加载 FastAPI 应用...", flush=True)
-        import uvicorn
-        from rag.api.app import app
-        print("[START] 启动 uvicorn 服务 (0.0.0.0:8000)...", flush=True)
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-        return
-    
-    if args.command == "ask":
-        from rag.cli import cmd_ask
-        cmd_ask(args, ask=container.ask, project_id=args.project_id)
-    elif args.command == "add-golden":
-        from rag.cli import cmd_add_golden
-        cmd_add_golden(args, golden_dataset_usecase=container.golden_dataset_usecase, project_id=args.project_id)
-    elif args.command == "eval":
-        from rag.cli import cmd_eval
-        cmd_eval(args, evaluate=container.evaluate, project_id=args.project_id)
-    elif args.command == "list-chunks":
-        from rag.cli.list_chunks import cmd_list_chunks
-        from rag.infra.repositories.pg_document_repository import PgDocumentRepository
-        from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
-        from rag.infra.database.connection import init_pool, close_pool
-
-        async def _run_list_chunks():
-            await init_pool(
-                host=settings.db_host,
-                port=settings.db_port,
-                database=settings.db_name,
-                user=settings.db_user,
-                password=settings.db_password,
-            )
-            try:
-                doc_repo = PgDocumentRepository()
-                chunk_repo = PgChunkRepository()
-                await cmd_list_chunks(args, document_repo=doc_repo, chunk_repo=chunk_repo)
-            finally:
-                await close_pool()
-
-        asyncio.run(_run_list_chunks())
+    elif cmd.dependency == "full_container":
+        print("[BUILD] 构建容器...", flush=True)
+        from rag.bootstrap.container import build_container
+        container = build_container(settings)
+        print("[BUILD] 容器构建完成", flush=True)
+        cmd.handler(args, container)
 
 
 if __name__ == "__main__":

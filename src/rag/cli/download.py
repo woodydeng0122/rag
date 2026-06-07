@@ -1,7 +1,16 @@
+from __future__ import annotations
+
 import os
 
+from argparse import ArgumentParser
 
-def cmd_download_embedding(args):
+
+def register_args(p: ArgumentParser):
+    p.add_argument("-m", "--model", type=str, required=True, help="模型名称，如 iic/nlp_gte_sentence-embedding_chinese-base")
+    p.add_argument("-o", "--output", type=str, default="./models", help="模型保存目录")
+
+
+def handle(args):
     """从 ModelScope 下载 embedding 模型到 models 文件夹"""
     model_name = args.model
     output_dir = args.output
@@ -20,3 +29,4 @@ def cmd_download_embedding(args):
     snapshot_download(model_name, local_dir=target_path)
 
     print(f"模型下载完成: {target_path}")
+

@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+from argparse import ArgumentParser
 
-def cmd_eval(args, evaluate: EvaluateUseCase, project_id: str):
+
+def register_args(p: ArgumentParser):
+    p.add_argument("-p", "--project-id", type=str, required=True, help="项目 ID")
+    p.add_argument("-k", "--k", type=int, nargs="+", help="Recall@K 的 K 值")
+    p.add_argument("-o", "--output", type=str, default="./eval_result.json", help="结果输出文件")
+
+
+def handle(args, container):
     """评测命令"""
     import asyncio
+    import json
 
-    # 从 DB 获取项目的黄金记录 ID
-    from rag.bootstrap.container import get_container
-    container = get_container()
+    project_id = args.project_id
+
     records = asyncio.run(container.golden_dataset_usecase.list_by_project(project_id))
     golden_ids = [r.id for r in records if r.ground_truth_chunks]
 
@@ -16,13 +24,12 @@ def cmd_eval(args, evaluate: EvaluateUseCase, project_id: str):
         return
 
     k_list = args.k or [10]
-    result = asyncio.run(evaluate.execute_by_project(
+    result = asyncio.run(container.evaluate.execute_by_project(
         project_id=project_id,
         golden_ids=golden_ids,
         k_list=k_list,
     ))
 
-    import json
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump({
             "time": result.time,
@@ -34,3 +41,4 @@ def cmd_eval(args, evaluate: EvaluateUseCase, project_id: str):
             "failure": result.failure,
         }, f, ensure_ascii=False, indent=2)
     print(f"评测结果已保存到 {args.output}")
+
