@@ -1,6 +1,5 @@
 from .ask import AskUseCase
 from .retrieve import RetrieveUseCase
-from .evaluate import EvaluateUseCase
 from .upload import UploadUseCase
 from .process_document import ProcessDocumentUseCase
 from .golden import GoldenUseCase
@@ -13,7 +12,6 @@ from .profile import ProfileUseCase
 __all__ = [
     "AskUseCase",
     "RetrieveUseCase",
-    "EvaluateUseCase",
     "UploadUseCase",
     "ProcessDocumentUseCase",
     "GoldenUseCase",

@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from rag.domain.value_objects.evaluation_metrics import EvaluationMetrics
-
 
 class GoldenStatus(str, Enum):
     """黄金记录状态枚举 — 避免魔法字符串"""
@@ -27,7 +25,6 @@ class GoldenRecord:
     id: str = ""
     project_id: str = ""
     status: GoldenStatus = GoldenStatus.APPROVED
-    evaluation: EvaluationMetrics | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     metadata: dict = field(default_factory=dict)

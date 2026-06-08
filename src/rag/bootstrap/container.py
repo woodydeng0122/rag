@@ -6,7 +6,6 @@ from rag.application.usecases.ask import AskUseCase
 from rag.application.usecases.batch_process_document import BatchProcessDocumentUseCase
 from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
-from rag.application.usecases.evaluate import EvaluateUseCase
 from rag.application.usecases.golden import GoldenUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
@@ -33,7 +32,6 @@ class Container:
     profile_usecase: ProfileUseCase
     ask: AskUseCase
     retrieve: RetrieveUseCase
-    evaluate: EvaluateUseCase
     settings: Settings
     # 基础设施
     model_scanner: ModelScanner
@@ -169,11 +167,6 @@ def _build_usecases(infra: dict):
         retriever=infra["retriever"],
         chunk_repo=infra["pg_chunk_repo"],
     )
-    evaluate = EvaluateUseCase(
-        retriever=infra["retriever"],
-        golden_repo=infra["pg_golden_repo"],
-        project_repo=infra["pg_project_repo"],
-    )
 
     return {
         "upload_usecase": upload_usecase,
@@ -187,7 +180,6 @@ def _build_usecases(infra: dict):
         "profile_usecase": profile_usecase,
         "ask": ask,
         "retrieve": retrieve,
-        "evaluate": evaluate,
     }
 
 

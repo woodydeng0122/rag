@@ -21,9 +21,6 @@ def main():
     from rag.adapters.cli.ask import register_args as ask_args, handle as ask_handle
     register_command("ask", help="提问", dependency="full_container", register_args=ask_args, handler=ask_handle)
 
-    from rag.adapters.cli.evaluate import register_args as eval_args, handle as eval_handle
-    register_command("eval", help="评测", dependency="full_container", register_args=eval_args, handler=eval_handle)
-
     from rag.adapters.cli.api import register_args as api_args, handle as api_handle
     register_command("api", help="启动 API 服务", dependency="full_container", register_args=api_args, handler=api_handle)
 

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .routes import health_router, retrieve_router, ask_router, evaluate_router
+from .routes import health_router, retrieve_router, ask_router
 from .routes.project import router as project_router
 from .routes.upload import router as upload_router
 from .routes.document import router as document_router
@@ -82,7 +82,6 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(retrieve_router)
 app.include_router(ask_router)
-app.include_router(evaluate_router)
 app.include_router(project_router)
 app.include_router(upload_router)
 app.include_router(document_router)

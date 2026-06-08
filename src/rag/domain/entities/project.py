@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-
-from rag.domain.value_objects.project_eval_summary import ProjectEvalSummary
 
 
 @dataclass
@@ -19,7 +17,6 @@ class Project:
     embed_dimension: int = 512
     created_at: datetime | None = None
     updated_at: datetime | None = None
-    eval_summary: ProjectEvalSummary | None = field(default=None, repr=False)
 
     # ── 修改规则 ──────────────────────────────────────────
 
@@ -27,7 +24,3 @@ class Project:
         """更新项目基本信息 — 仅允许修改名称和描述，保护其他字段不变量"""
         self.name = name
         self.description = description
-
-    def record_eval(self, summary: ProjectEvalSummary) -> None:
-        """记录评测汇总 — 封装评测结果写入规则"""
-        self.eval_summary = summary

@@ -24,13 +24,6 @@ class UpdateGoldenRequest(BaseModel):
     status: GoldenStatusEnum | None = Field(None, description="状态")
 
 
-class EvaluationMetricsResponse(BaseModel):
-    retrieved_chunk_ids: list[str] = Field(default_factory=list)
-    is_hit: bool | None = None
-    hit_rank: int | None = None
-    evaluated_at: str | None = None
-
-
 class GoldenResponse(BaseModel):
     id: str
     project_id: str
@@ -38,7 +31,6 @@ class GoldenResponse(BaseModel):
     ground_truth_chunks: list[str]
     reference_answer: str = ""
     status: GoldenStatusEnum = GoldenStatusEnum.APPROVED
-    evaluation: EvaluationMetricsResponse | None = None
     created_at: str = ""
     metadata: dict = Field(default_factory=dict)
 

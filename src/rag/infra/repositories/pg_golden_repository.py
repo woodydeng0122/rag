@@ -1,13 +1,11 @@
 import json
 
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
-from rag.domain.value_objects.evaluation_metrics import EvaluationMetrics
 from rag.domain.ports.golden_repository import GoldenRepositoryPort
 from rag.infra.database.connection import get_pool
 
 _SELECT = """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
-                     status, retrieved_chunk_ids, is_hit, hit_rank, evaluated_at,
-                     created_at, updated_at, metadata"""
+                     status, created_at, updated_at, metadata"""
 
 
 class PgGoldenRepository(GoldenRepositoryPort):
@@ -63,23 +61,17 @@ class PgGoldenRepository(GoldenRepositoryPort):
 
     async def update(self, record: GoldenRecord) -> GoldenRecord:
         pool = get_pool()
-        eval_metrics = record.evaluation
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 f"""UPDATE golden
                    SET query = $1, ground_truth_chunks = $2, reference_answer = $3,
-                       status = $4, retrieved_chunk_ids = $5, is_hit = $6, hit_rank = $7,
-                       evaluated_at = $8, metadata = $9, updated_at = now()
-                   WHERE id = $10
+                       status = $4, metadata = $5, updated_at = now()
+                   WHERE id = $6
                    RETURNING {_SELECT.replace('SELECT ', '')}""",
                 record.query,
                 record.ground_truth_chunks,
                 record.reference_answer,
                 record.status.value,
-                eval_metrics.retrieved_chunk_ids if eval_metrics else [],
-                eval_metrics.is_hit if eval_metrics else None,
-                eval_metrics.hit_rank if eval_metrics else None,
-                eval_metrics.evaluated_at if eval_metrics else None,
                 json.dumps(record.metadata) if record.metadata else "{}",
                 _to_uuid(record.id),
             )
@@ -187,21 +179,6 @@ def _row_to_record(row) -> GoldenRecord:
     else:
         metadata = {}
 
-    # 构建评测指标值对象
-    retrieved_chunk_ids = list(row["retrieved_chunk_ids"]) if row["retrieved_chunk_ids"] else []
-    is_hit = row["is_hit"]
-    hit_rank = row["hit_rank"]
-    evaluated_at = row["evaluated_at"]
-
-    evaluation = None
-    if retrieved_chunk_ids or is_hit is not None or hit_rank is not None or evaluated_at is not None:
-        evaluation = EvaluationMetrics(
-            retrieved_chunk_ids=retrieved_chunk_ids,
-            is_hit=is_hit,
-            hit_rank=hit_rank,
-            evaluated_at=evaluated_at,
-        )
-
     return GoldenRecord(
         id=str(row["id"]),
         project_id=str(row["project_id"]),
@@ -209,7 +186,6 @@ def _row_to_record(row) -> GoldenRecord:
         ground_truth_chunks=list(row["ground_truth_chunks"]) if row["ground_truth_chunks"] else [],
         reference_answer=row["reference_answer"] or "",
         status=GoldenStatus(row.get("status", "approved")),
-        evaluation=evaluation,
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         metadata=metadata,
