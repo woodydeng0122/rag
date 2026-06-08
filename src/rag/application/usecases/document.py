@@ -9,7 +9,7 @@ from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.file_storage import FileStoragePort
-from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
+from rag.domain.ports.golden_repository import GoldenRepositoryPort
 
 
 class DocumentUseCase:
@@ -21,7 +21,7 @@ class DocumentUseCase:
         chunk_repo: ChunkRepositoryPort,
         embedding_repo: EmbeddingRepositoryPort,
         file_storage: FileStoragePort,
-        golden_repo: GoldenDatasetRepositoryPort | None = None,
+        golden_repo: GoldenRepositoryPort | None = None,
     ):
         self._document_repo = document_repo
         self._chunk_repo = chunk_repo

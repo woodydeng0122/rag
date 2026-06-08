@@ -16,13 +16,13 @@
 ## Capabilities
 
 ### New Capabilities
-- `golden-dataset-generation`: LLM 驱动的黄金数据集两阶段生成，支持按文档/选定 chunk 生成，串行执行，异步任务追踪
-- `golden-dataset-review`: 黄金数据集审批流程，支持逐条和批量 approve/reject，状态筛选
+- `golden-generation`: LLM 驱动的黄金数据集两阶段生成，支持按文档/选定 chunk 生成，串行执行，异步任务追踪
+- `golden-review`: 黄金数据集审批流程，支持逐条和批量 approve/reject，状态筛选
 - `chunk-golden-records`: 分块关联黄金记录查询，chunk 详情页展示关联数据
 - `llm-json-output`: LLMPort 扩展 generate_json 方法，支持结构化 JSON 输出和解析重试
 
 ### Modified Capabilities
-- `golden-dataset-crud`: GoldenRecord 实体新增 status 字段，API 支持 status 过滤和更新
+- `golden-crud`: GoldenRecord 实体新增 status 字段，API 支持 status 过滤和更新
 
 ## Impact
 
@@ -31,4 +31,4 @@
 - **后端 Application**: 新增 GenerateGoldenUseCase（两阶段串行生成 + 后台协程）；GoldenDatasetUseCase 扩展审批方法
 - **后端 API**: 新增生成、任务查询、审批、分块关联黄金记录接口
 - **前端**: GoldenDataset.vue 新增生成按钮、状态筛选、审批操作；分块详情新增关联黄金记录 Tab
-- **数据库**: golden_dataset 表加 status 列；新建 generation_task 表
+- **数据库**: golden 表加 status 列；新建 generation_task 表

@@ -1,6 +1,6 @@
 ## 1. 数据库 Migration
 
-- [x] 1.1 创建 migration: golden_dataset 表新增 status VARCHAR(32) NOT NULL DEFAULT 'approved' 列，新增索引 idx_golden_dataset_status
+- [x] 1.1 创建 migration: golden 表新增 status VARCHAR(32) NOT NULL DEFAULT 'approved' 列，新增索引 idx_golden_status
 - [x] 1.2 创建 migration: 新建 generation_task 表（id, project_id, status, total, completed, failed, document_ids, chunk_ids, config, error_message, created_at, finished_at），新增索引 idx_generation_task_project_id
 
 ## 2. Domain 层
@@ -37,13 +37,13 @@
 
 - [x] 5.1 新增 schemas：GenerateGoldenRequest, GenerateGoldenResponse, GenerationTaskResponse, BatchStatusUpdateRequest, BatchStatusUpdateResponse
 - [x] 5.2 更新 GoldenDatasetResponse：新增 status 字段
-- [x] 5.3 新增 POST /api/projects/{pid}/golden-datasets/generate 路由
+- [x] 5.3 新增 POST /api/projects/{pid}/golden/generate 路由
 - [x] 5.4 新增 GET /api/projects/{pid}/generation-tasks 路由
 - [x] 5.5 新增 GET /api/projects/{pid}/generation-tasks/{tid} 路由
-- [x] 5.6 新增 POST /api/projects/{pid}/golden-datasets/batch-approve 路由
-- [x] 5.7 新增 POST /api/projects/{pid}/golden-datasets/batch-reject 路由
-- [x] 5.8 扩展 PATCH /api/projects/{pid}/golden-datasets/{rid}：支持 status 字段更新
-- [x] 5.9 扩展 GET /api/projects/{pid}/golden-datasets：支持 ?status= 过滤参数
+- [x] 5.6 新增 POST /api/projects/{pid}/golden/batch-approve 路由
+- [x] 5.7 新增 POST /api/projects/{pid}/golden/batch-reject 路由
+- [x] 5.8 扩展 PATCH /api/projects/{pid}/golden/{rid}：支持 status 字段更新
+- [x] 5.9 扩展 GET /api/projects/{pid}/golden：支持 ?status= 过滤参数
 - [x] 5.10 新增 GET /api/projects/{pid}/chunks/{cid}/golden-records 路由
 - [x] 5.11 注册新路由到 app.py（路由已在现有文件中，无需额外注册）
 

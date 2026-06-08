@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 
 
-class GoldenDatasetRepositoryPort(ABC):
-    """黄金数据集仓储端口 — 黄金记录持久化的抽象"""
+class GoldenRepositoryPort(ABC):
+    """黄金记录仓储端口 — 黄金记录持久化的抽象"""
 
     @abstractmethod
     async def save(self, record: GoldenRecord) -> GoldenRecord: ...

@@ -136,7 +136,7 @@ def compute_quality_score(record) -> float:
 
 ## API
 
-### POST /api/projects/{pid}/golden-datasets/generate
+### POST /api/projects/{pid}/golden/generate
 
 请求体:
 ```json

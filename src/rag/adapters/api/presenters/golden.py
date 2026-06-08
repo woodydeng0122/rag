@@ -1,6 +1,6 @@
-from rag.adapters.api.schemas.golden_dataset import (
+from rag.adapters.api.schemas.golden import (
     EvaluationMetricsResponse,
-    GoldenDatasetResponse,
+    GoldenResponse,
     GoldenStatusEnum,
 )
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus as DomainGoldenStatus
@@ -13,11 +13,11 @@ _DOMAIN_TO_API_GOLDEN_STATUS = {
 }
 
 
-class GoldenDatasetPresenter:
+class GoldenPresenter:
     """黄金记录领域实体 → API 响应转换"""
 
     @staticmethod
-    def to_response(r: GoldenRecord) -> GoldenDatasetResponse:
+    def to_response(r: GoldenRecord) -> GoldenResponse:
         evaluation = None
         if r.evaluation:
             evaluation = EvaluationMetricsResponse(
@@ -30,7 +30,7 @@ class GoldenDatasetPresenter:
                     else None
                 ),
             )
-        return GoldenDatasetResponse(
+        return GoldenResponse(
             id=r.id,
             project_id=r.project_id,
             query=r.query,

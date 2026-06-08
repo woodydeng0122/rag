@@ -1,6 +1,6 @@
 ## Context
 
-黄金数据集 CRUD 已完成（golden-dataset-crud change），支持手动逐条新增/编辑/删除/评测。DB 表 golden_dataset 已有 id、project_id、query、ground_truth_chunks、reference_answer、retrieved_chunk_ids、is_hit、hit_rank、evaluated_at、created_at 字段。
+黄金数据集 CRUD 已完成（golden-crud change），支持手动逐条新增/编辑/删除/评测。DB 表 golden 已有 id、project_id、query、ground_truth_chunks、reference_answer、retrieved_chunk_ids、is_hit、hit_rank、evaluated_at、created_at 字段。
 
 rag-golden-testset skill 生成的 JSONL 文件包含额外字段：metadata（type/difficulty/source/answerable/groundedness/expected_failure_mode）、quality_score、supporting_quotes。这些信息对评测分析有价值，不应丢弃。
 
@@ -25,7 +25,7 @@ rag-golden-testset skill 生成的 JSONL 文件包含额外字段：metadata（t
 
 ### 1. metadata 存储为 JSONB 字段
 
-**决策**: golden_dataset 表新增 `metadata JSONB DEFAULT '{}'` 字段，存储 rag-golden-testset 生成的额外信息
+**决策**: golden 表新增 `metadata JSONB DEFAULT '{}'` 字段，存储 rag-golden-testset 生成的额外信息
 
 **理由**: metadata 中的 type/difficulty/groundedness 等信息在评测分析时很有价值；JSONB 灵活，不预定义结构，兼容不同来源的数据；PostgreSQL JSONB 支持索引和查询
 

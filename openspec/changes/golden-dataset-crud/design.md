@@ -1,6 +1,6 @@
 ## Context
 
-当前 RAG 系统已有 `golden_dataset` 数据库表，但后端仅实现了评测用例（EvaluateUseCase），且评测时黄金数据由前端在请求体中传入，无法持久化管理。前端没有黄金数据集管理页面。
+当前 RAG 系统已有 `golden` 数据库表，但后端仅实现了评测用例（EvaluateUseCase），且评测时黄金数据由前端在请求体中传入，无法持久化管理。前端没有黄金数据集管理页面。
 
 现有架构遵循 Clean Architecture：Domain（实体 + 端口）→ Infra（PG 实现）→ Application（用例）→ API（FastAPI 路由）。前端使用 Vue 3 + Ant Design Vue + Pinia，已有 `activeProjectStore` 管理当前激活项目。
 
@@ -33,7 +33,7 @@
 ### 2. 评测结果持久化到两个层级
 
 **决策**:
-- `golden_dataset` 表记录每条记录的评测细节（retrieved_chunk_ids、is_hit、hit_rank、evaluated_at）
+- `golden` 表记录每条记录的评测细节（retrieved_chunk_ids、is_hit、hit_rank、evaluated_at）
 - `project` 表记录项目级汇总（eval_recall_at_10、eval_mrr、eval_answerable、eval_total、eval_latency_avg_ms、evaluated_at）
 
 **理由**: 项目级汇总便于 Dashboard 展示；记录级细节便于定位未命中查询，优化检索策略

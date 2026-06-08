@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
-from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
+from rag.domain.ports.golden_repository import GoldenRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 
 
@@ -20,10 +20,10 @@ class ImportResult:
     skipped: list[SkippedRecord] = field(default_factory=list)
 
 
-class GoldenDatasetUseCase:
-    """黄金数据集 CRUD + 导入用例"""
+class GoldenUseCase:
+    """黄金记录 CRUD + 导入用例"""
 
-    def __init__(self, golden_repo: GoldenDatasetRepositoryPort, chunk_repo: ChunkRepositoryPort):
+    def __init__(self, golden_repo: GoldenRepositoryPort, chunk_repo: ChunkRepositoryPort):
         self.golden_repo = golden_repo
         self.chunk_repo = chunk_repo
 

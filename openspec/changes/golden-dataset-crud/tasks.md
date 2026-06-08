@@ -1,6 +1,6 @@
 ## 1. 数据库 Migration
 
-- [x] 1.1 创建 migration: golden_dataset 表新增 retrieved_chunk_ids TEXT[]、is_hit BOOLEAN、hit_rank INT、evaluated_at TIMESTAMPTZ 字段
+- [x] 1.1 创建 migration: golden 表新增 retrieved_chunk_ids TEXT[]、is_hit BOOLEAN、hit_rank INT、evaluated_at TIMESTAMPTZ 字段
 - [x] 1.2 创建 migration: project 表新增 eval_recall_at_10 FLOAT、eval_mrr FLOAT、eval_answerable INT、eval_total INT、eval_latency_avg_ms FLOAT、evaluated_at TIMESTAMPTZ 字段
 
 ## 2. Domain 层
@@ -24,8 +24,8 @@
 
 ## 5. API 层
 
-- [x] 5.1 新增 golden_dataset schemas：CreateGoldenDatasetRequest、UpdateGoldenDatasetRequest、GoldenDatasetResponse
-- [x] 5.2 新增 golden_dataset 路由：CRUD 四个端点
+- [x] 5.1 新增 golden schemas：CreateGoldenDatasetRequest、UpdateGoldenDatasetRequest、GoldenDatasetResponse
+- [x] 5.2 新增 golden 路由：CRUD 四个端点
 - [x] 5.3 重构 evaluate 路由：改为 POST /api/projects/{pid}/evaluate，接收 golden_ids
 - [x] 5.4 更新 evaluate schemas：新增 EvaluateByProjectRequest
 - [x] 5.5 新增 chunks/search 路由：GET /api/projects/{pid}/chunks/search
@@ -50,6 +50,6 @@
 
 ## 8. 前端路由与菜单
 
-- [x] 8.1 更新 router/index.ts：新增 /golden-dataset 路由
+- [x] 8.1 更新 router/index.ts：新增 /golden 路由
 - [x] 8.2 更新 BasicLayout.vue：侧边栏新增"黄金数据集"菜单项（TrophyOutlined 图标）
-- [x] 8.3 更新面包屑：支持 /golden-dataset 路径
+- [x] 8.3 更新面包屑：支持 /golden 路径

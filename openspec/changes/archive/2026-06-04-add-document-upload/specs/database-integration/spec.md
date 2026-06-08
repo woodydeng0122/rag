@@ -19,11 +19,11 @@
 - **THEN** 系统关闭 asyncpg 连接池
 
 ### Requirement: Database schema
-系统 SHALL 创建以下 5 张表：project、document、chunk、embedding、golden_dataset。
+系统 SHALL 创建以下 5 张表：project、document、chunk、embedding、golden。
 
 #### Scenario: Tables created on initialization
 - **WHEN** 执行数据库初始化 SQL 脚本
-- **THEN** 创建 project、document、chunk、embedding、golden_dataset 五张表，包含 proposal 中定义的所有字段
+- **THEN** 创建 project、document、chunk、embedding、golden 五张表，包含 proposal 中定义的所有字段
 
 ### Requirement: Document repository with asyncpg
 系统 SHALL 提供 `PgDocumentRepository` 实现 `DocumentRepositoryPort` 接口，使用 asyncpg 操作 document 表。

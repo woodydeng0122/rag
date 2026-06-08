@@ -5,7 +5,7 @@
 ## What Changes
 
 - 新增黄金数据集文件上传 API，支持 JSONL 和 CSV 两种格式
-- golden_dataset 表新增 metadata JSONB 字段，保留 rag-golden-testset 生成的完整信息（type、difficulty、quality_score 等）
+- golden 表新增 metadata JSONB 字段，保留 rag-golden-testset 生成的完整信息（type、difficulty、quality_score 等）
 - 后端实现文件解析、严格 chunk ID 校验、追加导入逻辑，返回导入结果（成功数/跳过数/跳过原因）
 - 前端新增上传按钮和上传弹窗（拖拽上传 + 格式说明）
 - 前端提供 JSONL/CSV 模板下载（Blob 生成）
@@ -14,10 +14,10 @@
 ## Capabilities
 
 ### New Capabilities
-- `golden-dataset-import`: 黄金数据集文件上传导入，支持 JSONL/CSV 格式，严格 chunk ID 校验，追加模式
+- `golden-import`: 黄金数据集文件上传导入，支持 JSONL/CSV 格式，严格 chunk ID 校验，追加模式
 
 ### Modified Capabilities
-- `golden-dataset-crud`: GoldenRecord 实体和 DB 表新增 metadata JSONB 字段，API 响应包含 metadata
+- `golden-crud`: GoldenRecord 实体和 DB 表新增 metadata JSONB 字段，API 响应包含 metadata
 
 ## Impact
 

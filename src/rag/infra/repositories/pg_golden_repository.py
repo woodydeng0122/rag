@@ -2,7 +2,7 @@ import json
 
 from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus
 from rag.domain.value_objects.evaluation_metrics import EvaluationMetrics
-from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
+from rag.domain.ports.golden_repository import GoldenRepositoryPort
 from rag.infra.database.connection import get_pool
 
 _SELECT = """SELECT id, project_id, query, ground_truth_chunks, reference_answer,
@@ -10,14 +10,14 @@ _SELECT = """SELECT id, project_id, query, ground_truth_chunks, reference_answer
                      created_at, updated_at, metadata"""
 
 
-class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
-    """PostgreSQL 实现的黄金数据集仓储"""
+class PgGoldenRepository(GoldenRepositoryPort):
+    """PostgreSQL 实现的黄金记录仓储"""
 
     async def save(self, record: GoldenRecord) -> GoldenRecord:
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"""INSERT INTO golden_dataset (project_id, query, ground_truth_chunks, reference_answer, status, metadata)
+                f"""INSERT INTO golden (project_id, query, ground_truth_chunks, reference_answer, status, metadata)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING {_SELECT.replace('SELECT ', '')}""",
                 _to_uuid(record.project_id),
@@ -66,7 +66,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         eval_metrics = record.evaluation
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"""UPDATE golden_dataset
+                f"""UPDATE golden
                    SET query = $1, ground_truth_chunks = $2, reference_answer = $3,
                        status = $4, retrieved_chunk_ids = $5, is_hit = $6, hit_rank = $7,
                        evaluated_at = $8, metadata = $9, updated_at = now()
@@ -100,7 +100,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"""UPDATE golden_dataset SET status = $1, updated_at = now() WHERE id = $2
+                f"""UPDATE golden SET status = $1, updated_at = now() WHERE id = $2
                    RETURNING {_SELECT.replace('SELECT ', '')}""",
                 status.value,
                 _to_uuid(record_id),
@@ -115,7 +115,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             result = await conn.execute(
-                "UPDATE golden_dataset SET status = $1, updated_at = now() WHERE id = ANY($2::uuid[])",
+                "UPDATE golden SET status = $1, updated_at = now() WHERE id = ANY($2::uuid[])",
                 status.value,
                 record_ids,
             )
@@ -138,7 +138,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
     async def count_by_document_ids(self, document_ids: list[str]) -> dict[str, int]:
         """按文档 ID 批量统计关联的黄金记录条数
 
-        通过 chunk 表关联：golden_dataset.ground_truth_chunks 包含 chunk ID，
+        通过 chunk 表关联：golden.ground_truth_chunks 包含 chunk ID，
         chunk.document_id 指向文档。
         """
         if not document_ids:
@@ -158,7 +158,7 @@ class PgGoldenDatasetRepository(GoldenDatasetRepositoryPort):
     async def list_by_document(self, project_id: str, document_id: str) -> list[GoldenRecord]:
         """按文档 ID 查询关联的黄金记录
 
-        通过 chunk 表关联：golden_dataset.ground_truth_chunks 包含 chunk ID，
+        通过 chunk 表关联：golden.ground_truth_chunks 包含 chunk ID，
         chunk.document_id 指向文档。
         """
         pool = get_pool()

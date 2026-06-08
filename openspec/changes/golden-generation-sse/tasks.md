@@ -40,7 +40,7 @@
 
 ## 7. API 层 — 修改现有 generate 端点
 
-- [x] 7.1 修改 `POST /golden-datasets/generate`，使用 GenerationTaskRunner + TaskManager 替代原有 UseCase
+- [x] 7.1 修改 `POST /golden/generate`，使用 GenerationTaskRunner + TaskManager 替代原有 UseCase
 
 ## 8. 前端 — 生成 Drawer 组件（重构为 DocumentList 场景）
 

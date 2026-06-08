@@ -22,7 +22,7 @@
 - `generation-task-control`: 任务暂停/继续/取消/重试失败项
 
 ### Modified Capabilities
-- `golden-dataset-generation`: 重构为事件驱动生成器，新增 `astream` 流式 LLM 调用，TaskStatus 新增 paused/cancelled
+- `golden-generation`: 重构为事件驱动生成器，新增 `astream` 流式 LLM 调用，TaskStatus 新增 paused/cancelled
 - `llm-json-output`: 新增 `astream` 异步流式生成方法
 
 ## Impact

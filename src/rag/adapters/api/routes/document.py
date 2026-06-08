@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from rag.adapters.api.presenters.document import DocumentPresenter
-from rag.adapters.api.presenters.golden_dataset import GoldenDatasetPresenter
+from rag.adapters.api.presenters.golden import GoldenPresenter
 from rag.adapters.api.schemas.document import BatchProcessRequest
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
@@ -119,8 +119,8 @@ async def get_chunk_golden_records(
     container: Container = Depends(get_container),
 ):
     """查询分块关联的黄金记录"""
-    records = await container.golden_dataset_usecase.list_by_chunk_id(chunk_id, project_id)
-    return [GoldenDatasetPresenter.to_response(r) for r in records]
+    records = await container.golden_usecase.list_by_chunk_id(chunk_id, project_id)
+    return [GoldenPresenter.to_response(r) for r in records]
 
 
 @router.post("/documents/batch-process")

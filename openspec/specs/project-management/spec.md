@@ -64,8 +64,8 @@ Project 实体 SHALL 新增评测汇总字段：eval_recall_at_10、eval_mrr、e
 - **THEN** project 表新增 eval_recall_at_10 FLOAT、eval_mrr FLOAT、eval_answerable INT、eval_total INT、eval_latency_avg_ms FLOAT、evaluated_at TIMESTAMPTZ 字段，默认值为 NULL
 
 ### Requirement: Golden dataset database migration
-系统 SHALL 提供 migration 为 golden_dataset 表新增评测字段。
+系统 SHALL 提供 migration 为 golden 表新增评测字段。
 
 #### Scenario: Migration 执行
 - **WHEN** 执行数据库 migration
-- **THEN** golden_dataset 表新增 retrieved_chunk_ids TEXT[]、is_hit BOOLEAN、hit_rank INT、evaluated_at TIMESTAMPTZ 字段，默认值分别为 '{}'、NULL、NULL、NULL
+- **THEN** golden 表新增 retrieved_chunk_ids TEXT[]、is_hit BOOLEAN、hit_rank INT、evaluated_at TIMESTAMPTZ 字段，默认值分别为 '{}'、NULL、NULL、NULL

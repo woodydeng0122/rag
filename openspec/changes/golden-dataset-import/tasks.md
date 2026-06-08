@@ -1,6 +1,6 @@
 ## 1. 数据库 Migration
 
-- [x] 1.1 创建 migration: golden_dataset 表新增 metadata JSONB DEFAULT '{}' 字段
+- [x] 1.1 创建 migration: golden 表新增 metadata JSONB DEFAULT '{}' 字段
 
 ## 2. Domain 层
 
@@ -18,10 +18,10 @@
 ## 5. API 层
 
 - [x] 5.1 新增 ImportGoldenDatasetResponse schema：success_count、skipped_count、skipped 列表
-- [x] 5.2 新增 POST /api/projects/{pid}/golden-datasets/import 路由：接收 multipart 文件上传
+- [x] 5.2 新增 POST /api/projects/{pid}/golden/import 路由：接收 multipart 文件上传
 - [x] 5.3 更新 GoldenDatasetResponse schema：新增 metadata 字段
-- [x] 5.4 更新 golden_dataset 路由的 _record_to_response：输出 metadata
-- [x] 5.5 路由改为 RESTful 风格：/golden-datasets (复数) + /golden-datasets/{id} + /golden-datasets/import
+- [x] 5.4 更新 golden 路由的 _record_to_response：输出 metadata
+- [x] 5.5 路由改为 RESTful 风格：/golden (复数) + /golden/{id} + /golden/import
 
 ## 6. 前端 API 层
 

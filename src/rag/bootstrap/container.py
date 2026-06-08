@@ -7,7 +7,7 @@ from rag.application.usecases.batch_process_document import BatchProcessDocument
 from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
-from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
+from rag.application.usecases.golden import GoldenUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
 from rag.application.usecases.project import ProjectUseCase
@@ -25,7 +25,7 @@ class Container:
     upload_usecase: UploadUseCase
     process_document_usecase: ProcessDocumentUseCase
     batch_process_usecase: BatchProcessDocumentUseCase
-    golden_dataset_usecase: GoldenDatasetUseCase
+    golden_usecase: GoldenUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
     project_usecase: ProjectUseCase
     document_usecase: DocumentUseCase
@@ -50,7 +50,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
     from rag.infra.repositories.pg_embedding_repository import PgEmbeddingRepository
     from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
-    from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
+    from rag.infra.repositories.pg_golden_repository import PgGoldenRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
@@ -67,7 +67,7 @@ def _build_infra(settings: Settings):
     pg_chunk_repo = PgChunkRepository()
     pg_embedding_repo = PgEmbeddingRepository()
     pg_embed_model_repo = PgEmbedModelRepository()
-    pg_golden_repo = PgGoldenDatasetRepository()
+    pg_golden_repo = PgGoldenRepository()
     pg_profile_repo = PgProfileRepository()
 
     # 基础设施适配器
@@ -135,7 +135,7 @@ def _build_usecases(infra: dict):
     batch_process_usecase = BatchProcessDocumentUseCase(
         process_document_usecase=process_document_usecase,
     )
-    golden_dataset_usecase = GoldenDatasetUseCase(
+    golden_usecase = GoldenUseCase(
         golden_repo=infra["pg_golden_repo"],
         chunk_repo=infra["pg_chunk_repo"],
     )
@@ -179,7 +179,7 @@ def _build_usecases(infra: dict):
         "upload_usecase": upload_usecase,
         "process_document_usecase": process_document_usecase,
         "batch_process_usecase": batch_process_usecase,
-        "golden_dataset_usecase": golden_dataset_usecase,
+        "golden_usecase": golden_usecase,
         "scan_embed_models_usecase": scan_embed_models_usecase,
         "project_usecase": project_usecase,
         "document_usecase": document_usecase,

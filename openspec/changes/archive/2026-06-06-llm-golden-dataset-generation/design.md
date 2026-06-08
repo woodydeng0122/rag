@@ -1,6 +1,6 @@
 ## Context
 
-黄金数据集 CRUD 和文件导入已完成（golden-dataset-crud / golden-dataset-import changes）。GoldenRecord 实体已有 query、ground_truth_chunks、reference_answer、metadata（含 type/difficulty/quality_score/supporting_quotes 等）字段。DashScopeLLM 已接入但仅用于 AskUseCase。
+黄金数据集 CRUD 和文件导入已完成（golden-crud / golden-import changes）。GoldenRecord 实体已有 query、ground_truth_chunks、reference_answer、metadata（含 type/difficulty/quality_score/supporting_quotes 等）字段。DashScopeLLM 已接入但仅用于 AskUseCase。
 
 现有架构遵循 Clean Architecture：Domain（实体 + 端口）→ Infra（PG 实现）→ Application（用例）→ API（FastAPI 路由）。LLMPort 当前只有 `generate(prompt) -> str` 单方法。
 

@@ -29,7 +29,7 @@ DocumentList 文档表格"黄金数据集"列 SHALL 展示三态流转：[生成
 
 #### Scenario: 提交生成
 - **WHEN** 用户点击 [开始生成]
-- **THEN** 调用 POST /golden-datasets/generate，提交后关闭弹窗，更新该行状态为"生成中(0)"
+- **THEN** 调用 POST /golden/generate，提交后关闭弹窗，更新该行状态为"生成中(0)"
 
 ### Requirement: Batch generation
 工具栏 SHALL 新增 [批量生成] 按钮，支持多文档同时生成。

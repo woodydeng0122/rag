@@ -1,7 +1,7 @@
 ## 1. 数据库基础设施
 
 - [x] 1.1 修改 docker-compose.yml：镜像从 `postgres:18-alpine` 换为 `pgvector/pgvector:pg18`，添加初始化 SQL 挂载
-- [x] 1.2 创建数据库初始化 SQL 脚本 `src/rag/infra/database/migrations/001_init.sql`：启用 pgvector 扩展，创建 project、document、chunk、embedding、golden_dataset 五张表
+- [x] 1.2 创建数据库初始化 SQL 脚本 `src/rag/infra/database/migrations/001_init.sql`：启用 pgvector 扩展，创建 project、document、chunk、embedding、golden 五张表
 - [x] 1.3 创建数据库连接模块 `src/rag/infra/database/connection.py`：asyncpg 连接池管理（init_pool、get_pool、close_pool）
 - [x] 1.4 启动数据库并验证建表成功
 

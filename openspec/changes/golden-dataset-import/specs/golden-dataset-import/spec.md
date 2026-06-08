@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Golden dataset file import API
-系统 SHALL 提供文件上传导入接口 `POST /api/projects/{pid}/golden-datasets/import`，支持 JSONL 和 CSV 格式。
+系统 SHALL 提供文件上传导入接口 `POST /api/projects/{pid}/golden/import`，支持 JSONL 和 CSV 格式。
 
 #### Scenario: JSONL 文件导入
 - **WHEN** 上传 .jsonl 文件，每行包含 query、ground_truth_chunks、reference_answer 字段
@@ -54,7 +54,7 @@
 - **THEN** 返回 `{ success_count: 0, skipped_count: 3, skipped: [...] }`
 
 ### Requirement: Metadata preservation on import
-导入时 SHALL 将 rag-golden-testset 生成的 metadata 信息存入 golden_dataset 表的 metadata JSONB 字段。
+导入时 SHALL 将 rag-golden-testset 生成的 metadata 信息存入 golden 表的 metadata JSONB 字段。
 
 #### Scenario: JSONL 含 metadata
 - **WHEN** 导入的 JSONL 记录包含 metadata 字段

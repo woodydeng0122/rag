@@ -9,7 +9,7 @@
 - 新增 `document` 表：记录文件元信息、处理状态、分块策略参数、嵌入模型等
 - 新增 `chunk` 表：关联文档与分块结果
 - 新增 `embedding` 表：关联 chunk 与向量（使用 pgvector VECTOR 类型）
-- 新增 `golden_dataset` 表：存储评测黄金测试集
+- 新增 `golden` 表：存储评测黄金测试集
 - 新增后端上传 API：支持单文件和 zip 上传，zip 解压到 `docs/{upload_id}/` 保持目录结构
 - 新增后端文档处理 API：手动触发分块+嵌入，状态流转 `uploaded → chunking → chunked → embedding → embedded → ready → error`
 - 新增前端文档管理页面：上传文件/zip、查看文档列表和处理状态、手动触发处理

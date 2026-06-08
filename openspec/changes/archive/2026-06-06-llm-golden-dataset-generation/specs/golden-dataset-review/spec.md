@@ -50,7 +50,7 @@ class GoldenDatasetRepositoryPort(ABC):
 
 ## API
 
-### PATCH /api/projects/{pid}/golden-datasets/{rid}
+### PATCH /api/projects/{pid}/golden/{rid}
 
 请求体（扩展 UpdateGoldenDatasetRequest）:
 ```json
@@ -62,7 +62,7 @@ class GoldenDatasetRepositoryPort(ABC):
 }
 ```
 
-### POST /api/projects/{pid}/golden-datasets/batch-approve
+### POST /api/projects/{pid}/golden/batch-approve
 
 请求体:
 ```json
@@ -78,7 +78,7 @@ class GoldenDatasetRepositoryPort(ABC):
 }
 ```
 
-### POST /api/projects/{pid}/golden-datasets/batch-reject
+### POST /api/projects/{pid}/golden/batch-reject
 
 请求体:
 ```json
@@ -94,7 +94,7 @@ class GoldenDatasetRepositoryPort(ABC):
 }
 ```
 
-### GET /api/projects/{pid}/golden-datasets 扩展
+### GET /api/projects/{pid}/golden 扩展
 
 新增查询参数 `status`:
 - `?status=pending_review` — 只返回待审核记录

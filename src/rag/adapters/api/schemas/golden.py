@@ -11,13 +11,13 @@ class GoldenStatusEnum(str, Enum):
     REJECTED = "rejected"
 
 
-class CreateGoldenDatasetRequest(BaseModel):
+class CreateGoldenRequest(BaseModel):
     query: str = Field(..., description="查询文本")
     ground_truth_chunks: list[str] = Field(..., description="关联的真实分块 ID 列表")
     reference_answer: str = Field("", description="参考答案")
 
 
-class UpdateGoldenDatasetRequest(BaseModel):
+class UpdateGoldenRequest(BaseModel):
     query: str | None = Field(None, description="查询文本")
     ground_truth_chunks: list[str] | None = Field(None, description="关联的真实分块 ID 列表")
     reference_answer: str | None = Field(None, description="参考答案")
@@ -31,7 +31,7 @@ class EvaluationMetricsResponse(BaseModel):
     evaluated_at: str | None = None
 
 
-class GoldenDatasetResponse(BaseModel):
+class GoldenResponse(BaseModel):
     id: str
     project_id: str
     query: str
@@ -48,7 +48,7 @@ class SkippedRecordResponse(BaseModel):
     reason: str
 
 
-class ImportGoldenDatasetResponse(BaseModel):
+class ImportGoldenResponse(BaseModel):
     success_count: int = 0
     skipped_count: int = 0
     skipped: list[SkippedRecordResponse] = Field(default_factory=list)

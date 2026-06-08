@@ -16,7 +16,7 @@ def handle(args, container):
 
     project_id = args.project_id
 
-    records = asyncio.run(container.golden_dataset_usecase.list_by_project(project_id))
+    records = asyncio.run(container.golden_usecase.list_by_project(project_id))
     golden_ids = [r.id for r in records if r.ground_truth_chunks]
 
     if not golden_ids:

@@ -16,7 +16,7 @@
 - **THEN** 返回 400 错误，提示"golden_ids 不能为空"
 
 ### Requirement: Persist evaluation results to golden records
-评测完成后 SHALL 将每条记录的评测结果持久化到 golden_dataset 表的 retrieved_chunk_ids、is_hit、hit_rank、evaluated_at 字段。
+评测完成后 SHALL 将每条记录的评测结果持久化到 golden 表的 retrieved_chunk_ids、is_hit、hit_rank、evaluated_at 字段。
 
 #### Scenario: 命中记录持久化
 - **WHEN** 某条记录的 ground_truth_chunks 与 retrieved_chunk_ids 有交集

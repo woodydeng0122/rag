@@ -3,7 +3,7 @@ from .retrieve import RetrieveUseCase
 from .evaluate import EvaluateUseCase
 from .upload import UploadUseCase
 from .process_document import ProcessDocumentUseCase
-from .golden_dataset import GoldenDatasetUseCase
+from .golden import GoldenUseCase
 from .scan_embed_models import ScanEmbedModelsUseCase
 from .project import ProjectUseCase
 from .document import DocumentUseCase
@@ -16,7 +16,7 @@ __all__ = [
     "EvaluateUseCase",
     "UploadUseCase",
     "ProcessDocumentUseCase",
-    "GoldenDatasetUseCase",
+    "GoldenUseCase",
     "ScanEmbedModelsUseCase",
     "ProjectUseCase",
     "DocumentUseCase",
