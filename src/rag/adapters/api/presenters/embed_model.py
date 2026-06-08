@@ -1,4 +1,4 @@
-from rag.api.schemas.embed_model import EmbedModelItem, EmbedModelStatus
+from rag.adapters.api.schemas.embed_model import EmbedModelItem, EmbedModelStatus
 from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 
 # 领域枚举 → API 枚举映射

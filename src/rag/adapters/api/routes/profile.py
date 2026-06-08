@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.presenters.profile import ProfilePresenter
-from rag.api.schemas.profile import UpdateProfileRequest
+from rag.adapters.api.presenters.profile import ProfilePresenter
+from rag.adapters.api.schemas.profile import UpdateProfileRequest
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rag.application.results.batch_process_result import BatchProcessItem, BatchProcessResult
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.domain.entities.document import DocumentStatus

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.presenters.project import ProjectPresenter
-from rag.api.schemas.project import CreateProjectRequest, UpdateProjectRequest
+from rag.adapters.api.presenters.project import ProjectPresenter
+from rag.adapters.api.schemas.project import CreateProjectRequest, UpdateProjectRequest
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])

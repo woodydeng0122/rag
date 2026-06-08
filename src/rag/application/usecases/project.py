@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rag.application.results.project_result import ProjectResult
 from rag.domain.entities.project import Project
 from rag.domain.ports.project_repository import ProjectRepositoryPort

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.presenters.document import DocumentPresenter
-from rag.api.presenters.golden_dataset import GoldenDatasetPresenter
-from rag.api.schemas.document import BatchProcessRequest
+from rag.adapters.api.presenters.document import DocumentPresenter
+from rag.adapters.api.presenters.golden_dataset import GoldenDatasetPresenter
+from rag.adapters.api.schemas.document import BatchProcessRequest
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
 

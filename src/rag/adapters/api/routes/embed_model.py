@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.presenters.embed_model import EmbedModelPresenter
-from rag.api.schemas.embed_model import (
+from rag.adapters.api.presenters.embed_model import EmbedModelPresenter
+from rag.adapters.api.schemas.embed_model import (
     EmbedModelListResponse,
     CreateEmbedModelRequest,
     UpdateEmbedModelRequest,

@@ -1,4 +1,4 @@
-from rag.api.schemas.profile import ProfileResponse
+from rag.adapters.api.schemas.profile import ProfileResponse
 from rag.domain.entities.profile import Profile
 
 

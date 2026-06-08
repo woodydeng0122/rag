@@ -23,16 +23,6 @@ class SourceContentWithDoc:
 
 
 @dataclass
-class BatchProcessResult:
-    """批量处理结果"""
-
-    total: int
-    success: int
-    failed: int
-    results: list[BatchProcessItem]
-
-
-@dataclass
 class BatchProcessItem:
     """批量处理单项结果"""
 
@@ -40,3 +30,13 @@ class BatchProcessItem:
     status: str
     chunk_count: int = 0
     error_message: str = ""
+
+
+@dataclass
+class BatchProcessResult:
+    """批量处理结果"""
+
+    total: int
+    success: int
+    failed: int
+    results: list[BatchProcessItem]

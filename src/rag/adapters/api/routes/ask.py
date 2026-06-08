@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from rag.api.schemas.ask import AskRequest, AskResponse
+from rag.adapters.api.schemas.ask import AskRequest, AskResponse
 from rag.application.usecases.ask import AskUseCase
 from rag.bootstrap.container import Container, get_container
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rag.application.results.document_result import DocumentWithGoldenCount
 from rag.application.results.batch_process_result import ChunksWithDoc, SourceContentWithDoc
 from rag.domain.entities.chunk import Chunk

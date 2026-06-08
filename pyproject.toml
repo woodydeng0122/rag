@@ -58,7 +58,7 @@ root_package = "src.rag"
 name = "Clean Architecture layers"
 type = "layers"
 layers = [
-    "src.rag.api | src.rag.cli",
+    "src.rag.adapters.api | src.rag.adapters.cli",
     "src.rag.bootstrap",
     "src.rag.infra | src.rag.application",
     "src.rag.domain",
@@ -69,18 +69,18 @@ layers = [
 name = "Domain independence"
 type = "forbidden"
 source_modules = ["src.rag.domain"]
-forbidden_modules = ["src.rag.application", "src.rag.infra", "src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
+forbidden_modules = ["src.rag.application", "src.rag.infra", "src.rag.adapters.api", "src.rag.adapters.cli", "src.rag.bootstrap"]
 
 # 规则3：application 不依赖外层
 [[tool.importlinter.contracts]]
 name = "Application isolation"
 type = "forbidden"
 source_modules = ["src.rag.application"]
-forbidden_modules = ["src.rag.infra", "src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
+forbidden_modules = ["src.rag.infra", "src.rag.adapters.api", "src.rag.adapters.cli", "src.rag.bootstrap"]
 
 # 规则4：infra 不依赖入口层和组合根
 [[tool.importlinter.contracts]]
 name = "Infra isolation"
 type = "forbidden"
 source_modules = ["src.rag.infra"]
-forbidden_modules = ["src.rag.api", "src.rag.cli", "src.rag.bootstrap"]
+forbidden_modules = ["src.rag.adapters.api", "src.rag.adapters.cli", "src.rag.bootstrap"]

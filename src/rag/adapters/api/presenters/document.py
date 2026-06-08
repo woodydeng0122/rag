@@ -1,4 +1,4 @@
-from rag.api.schemas.document import (
+from rag.adapters.api.schemas.document import (
     BatchProcessItem,
     BatchProcessResponse,
     ChunkListResponse,
@@ -10,7 +10,7 @@ from rag.api.schemas.document import (
     SourceContentResponse,
     SplitterConfigSchema,
 )
-from rag.api.schemas.upload import UploadResponse
+from rag.adapters.api.schemas.upload import UploadResponse
 from rag.application.results.document_result import DocumentWithGoldenCount
 from rag.application.results.batch_process_result import BatchProcessResult, ChunksWithDoc, SourceContentWithDoc
 from rag.domain.entities.chunk import Chunk

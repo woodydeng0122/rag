@@ -12,7 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 
-from rag.api.schemas.response import SUCCESS_CODE
+from rag.adapters.api.schemas.response import SUCCESS_CODE
 from rag.shared.logger import logger
 
 

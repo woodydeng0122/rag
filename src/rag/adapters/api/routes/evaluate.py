@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.evaluate import EvaluateByProjectRequest
+from rag.adapters.api.schemas.evaluate import EvaluateByProjectRequest
 from rag.application.results.evaluate_result import EvaluateResult
 from rag.bootstrap.container import Container, get_container
 

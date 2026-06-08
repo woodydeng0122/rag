@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from rag.api.schemas.retrieve import RetrieveRequest, RetrieveResponse
+from rag.adapters.api.schemas.retrieve import RetrieveRequest, RetrieveResponse
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["检索"])

@@ -1,4 +1,4 @@
-from rag.api.schemas.project import EvalSummaryResponse, ProjectResponse
+from rag.adapters.api.schemas.project import EvalSummaryResponse, ProjectResponse
 from rag.application.results.project_result import ProjectResult
 
 

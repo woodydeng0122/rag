@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 
-from rag.api.presenters.document import DocumentPresenter
+from rag.adapters.api.presenters.document import DocumentPresenter
 from rag.bootstrap.container import Container, get_container
 from rag.domain.value_objects.splitter_config import SplitterConfig
 

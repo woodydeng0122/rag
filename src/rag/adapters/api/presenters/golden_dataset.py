@@ -1,4 +1,4 @@
-from rag.api.schemas.golden_dataset import (
+from rag.adapters.api.schemas.golden_dataset import (
     EvaluationMetricsResponse,
     GenerationTaskResponse,
     GoldenDatasetResponse,
