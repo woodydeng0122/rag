@@ -11,12 +11,9 @@ from rag.adapters.api.schemas.golden_dataset import (
     UpdateGoldenDatasetRequest,
     ImportGoldenDatasetResponse,
     SkippedRecordResponse,
-    GenerateGoldenRequest,
-    GenerateGoldenResponse,
     BatchStatusUpdateRequest,
     BatchStatusUpdateResponse,
 )
-from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.bootstrap.container import Container, get_container
 
 logger = logging.getLogger(__name__)
@@ -96,41 +93,6 @@ async def delete_golden_dataset(
     if not deleted:
         raise HTTPException(status_code=404, detail="黄金记录不存在")
     return {"detail": "删除成功"}
-
-
-@router.post("/golden-datasets/generate", response_model=GenerateGoldenResponse)
-async def generate_golden_dataset(
-    project_id: str,
-    req: GenerateGoldenRequest,
-    container: Container = Depends(get_container),
-):
-    """提交 LLM 生成黄金数据集任务"""
-    if not req.document_ids and not req.chunk_ids:
-        raise HTTPException(status_code=400, detail="必须提供 document_ids 或 chunk_ids")
-
-    config = GenerateConfig()
-    if req.config:
-        config = GenerateConfig(
-            per_chunk=req.config.per_chunk,
-            question_types=req.config.resolve_question_types() or config.question_types,
-            difficulty=req.config.difficulty,
-            user_persona=req.config.user_persona,
-            chunk_batch_size=req.config.chunk_batch_size,
-            file_char_threshold=req.config.file_char_threshold,
-        )
-
-    try:
-        task = await container.generate_golden_usecase.submit_with_runner(
-            project_id=project_id,
-            document_ids=req.document_ids or None,
-            chunk_ids=req.chunk_ids or None,
-            config=config,
-            task_manager=container.task_manager,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    return GenerateGoldenResponse(task_id=task.id, status=task.status.value)
 
 
 @router.post("/golden-datasets/batch-approve", response_model=BatchStatusUpdateResponse)
