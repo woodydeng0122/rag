@@ -1,6 +1,4 @@
-import json
 import logging
-import re
 import time
 from collections.abc import AsyncGenerator
 from openai import OpenAI, PermissionDeniedError
@@ -62,12 +60,11 @@ class DashScopeLLM(LLMPort):
                     continue
                 raise ValueError("LLM 返回空内容，无法解析 JSON")
 
-            parsed = self._extract_json(raw)
-            if parsed is not None:
-                return parsed
-
-            if attempt < _MAX_JSON_RETRIES:
-                logger.warning("generate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
+            try:
+                return self._parse_json_output(raw)
+            except ValueError:
+                if attempt < _MAX_JSON_RETRIES:
+                    logger.warning("generate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
 
         raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
 
@@ -125,58 +122,20 @@ class DashScopeLLM(LLMPort):
                     continue
                 raise ValueError("LLM 返回空内容，无法解析 JSON")
 
-            parsed = self._extract_json(raw)
-            if parsed is not None:
-                return parsed
-
-            if attempt < _MAX_JSON_RETRIES:
-                logger.warning("agenerate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
+            try:
+                return self._parse_json_output(raw)
+            except ValueError:
+                if attempt < _MAX_JSON_RETRIES:
+                    logger.warning("agenerate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
 
         raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
 
     @staticmethod
     def _enhance_prompt(prompt: str, schema: dict | None) -> str:
         """增强 prompt，追加 JSON 输出要求"""
+        import json
+
         suffix = "\n\n输出要求：\n- 只输出合法 JSON，不要有其他内容\n- 不要用 markdown 代码块包裹"
         if schema:
             suffix += f"\n- 格式说明：{json.dumps(schema, ensure_ascii=False)}"
         return prompt + suffix
-
-    @staticmethod
-    def _extract_json(raw: str) -> dict | None:
-        """从原始文本中提取 JSON：直接解析 → 代码块提取 → 大括号提取"""
-        # 1. 直接解析
-        try:
-            return json.loads(raw.strip())
-        except json.JSONDecodeError:
-            pass
-
-        # 2. 提取 ```json ... ``` 代码块
-        match = re.search(r"```(?:json)?\s*\n?(.*?)```", raw, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-
-        # 3. 提取第一个 { 到最后一个 } 之间的内容
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            try:
-                return json.loads(raw[start : end + 1])
-            except json.JSONDecodeError:
-                pass
-
-        # 4. 提取 [ ... ] 数组格式（包装为 dict）
-        start = raw.find("[")
-        end = raw.rfind("]")
-        if start != -1 and end != -1 and end > start:
-            try:
-                items = json.loads(raw[start : end + 1])
-                if isinstance(items, list):
-                    return {"items": items}
-            except json.JSONDecodeError:
-                pass
-
-        return None

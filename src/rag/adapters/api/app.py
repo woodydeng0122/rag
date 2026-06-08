@@ -11,6 +11,7 @@ from .routes.upload import router as upload_router
 from .routes.document import router as document_router
 from .routes.embed_model import router as embed_model_router
 from .routes.golden_dataset import router as golden_dataset_router
+from .routes.generation_task import router as generation_task_router
 from .routes.profile import router as profile_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
@@ -88,6 +89,7 @@ app.include_router(upload_router)
 app.include_router(document_router)
 app.include_router(embed_model_router)
 app.include_router(golden_dataset_router)
+app.include_router(generation_task_router)
 app.include_router(profile_router)
 
 from argparse import ArgumentParser

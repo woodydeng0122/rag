@@ -9,6 +9,7 @@ from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
 from rag.application.usecases.generate_golden import GenerateGoldenUseCase
+from rag.application.usecases.generation_task import GenerationTaskUseCase
 from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
@@ -29,6 +30,7 @@ class Container:
     batch_process_usecase: BatchProcessDocumentUseCase
     golden_dataset_usecase: GoldenDatasetUseCase
     generate_golden_usecase: GenerateGoldenUseCase
+    generation_task_usecase: GenerationTaskUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
     project_usecase: ProjectUseCase
     document_usecase: DocumentUseCase
@@ -134,6 +136,9 @@ def build_container(settings: Settings | None = None) -> Container:
         chunk_repo=pg_chunk_repo,
         task_repo=pg_generation_task_repo,
     )
+    generation_task_usecase = GenerationTaskUseCase(
+        task_repo=pg_generation_task_repo,
+    )
     project_usecase = ProjectUseCase(
         project_repo=pg_project_repo,
         embed_model_repo=pg_embed_model_repo,
@@ -171,6 +176,7 @@ def build_container(settings: Settings | None = None) -> Container:
         batch_process_usecase=batch_process_usecase,
         golden_dataset_usecase=golden_dataset_usecase,
         generate_golden_usecase=generate_golden_usecase,
+        generation_task_usecase=generation_task_usecase,
         scan_embed_models_usecase=scan_embed_models_usecase,
         project_usecase=project_usecase,
         document_usecase=document_usecase,
