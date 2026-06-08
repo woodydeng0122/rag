@@ -1,4 +1,18 @@
+from enum import Enum
+
 from pydantic import BaseModel
+
+
+class DocumentStatusEnum(str, Enum):
+    """API 层文档状态枚举 — 与领域层解耦"""
+
+    UPLOADED = "uploaded"
+    CHUNKING = "chunking"
+    CHUNKED = "chunked"
+    EMBEDDING = "embedding"
+    EMBEDDED = "embedded"
+    READY = "ready"
+    ERROR = "error"
 
 
 class SplitterConfigSchema(BaseModel):
@@ -17,7 +31,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_type: str
     checksum: str
-    status: str
+    status: DocumentStatusEnum
     splitter_config: SplitterConfigSchema
     chunk_count: int = 0
     golden_record_count: int = 0
@@ -32,7 +46,7 @@ class DocumentListResponse(BaseModel):
 
 class ProcessDocumentResponse(BaseModel):
     id: str
-    status: str
+    status: DocumentStatusEnum
     chunk_count: int
     error_message: str = ""
 
@@ -43,7 +57,7 @@ class BatchProcessRequest(BaseModel):
 
 class BatchProcessItem(BaseModel):
     id: str
-    status: str
+    status: DocumentStatusEnum
     chunk_count: int = 0
     error_message: str = ""
 

@@ -2,9 +2,26 @@ from rag.api.schemas.golden_dataset import (
     EvaluationMetricsResponse,
     GenerationTaskResponse,
     GoldenDatasetResponse,
+    GoldenStatusEnum,
+    TaskStatusEnum,
 )
-from rag.domain.entities.generation_task import GenerationTask
-from rag.domain.entities.golden_record import GoldenRecord
+from rag.domain.entities.generation_task import GenerationTask, TaskStatus as DomainTaskStatus
+from rag.domain.entities.golden_record import GoldenRecord, GoldenStatus as DomainGoldenStatus
+
+# 领域枚举 → API 枚举映射
+_DOMAIN_TO_API_GOLDEN_STATUS = {
+    DomainGoldenStatus.PENDING_REVIEW: GoldenStatusEnum.PENDING_REVIEW,
+    DomainGoldenStatus.APPROVED: GoldenStatusEnum.APPROVED,
+    DomainGoldenStatus.REJECTED: GoldenStatusEnum.REJECTED,
+}
+
+_DOMAIN_TO_API_TASK_STATUS = {
+    DomainTaskStatus.RUNNING: TaskStatusEnum.RUNNING,
+    DomainTaskStatus.PAUSED: TaskStatusEnum.PAUSED,
+    DomainTaskStatus.CANCELLED: TaskStatusEnum.CANCELLED,
+    DomainTaskStatus.COMPLETED: TaskStatusEnum.COMPLETED,
+    DomainTaskStatus.FAILED: TaskStatusEnum.FAILED,
+}
 
 
 class GoldenDatasetPresenter:
@@ -30,7 +47,7 @@ class GoldenDatasetPresenter:
             query=r.query,
             ground_truth_chunks=r.ground_truth_chunks,
             reference_answer=r.reference_answer or "",
-            status=r.status.value if hasattr(r.status, "value") else r.status,
+            status=_DOMAIN_TO_API_GOLDEN_STATUS[r.status],
             evaluation=evaluation,
             created_at=r.created_at.isoformat() if r.created_at else "",
             metadata=r.metadata if r.metadata else {},
@@ -41,7 +58,7 @@ class GoldenDatasetPresenter:
         return GenerationTaskResponse(
             id=t.id,
             project_id=t.project_id,
-            status=t.status.value if hasattr(t.status, "value") else t.status,
+            status=_DOMAIN_TO_API_TASK_STATUS[t.status],
             total=t.total,
             completed=t.completed,
             failed=t.failed,

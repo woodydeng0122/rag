@@ -125,14 +125,7 @@ def build_container(settings: Settings | None = None) -> Container:
         embedder_pool=embedder_pool,
     )
     batch_process_usecase = BatchProcessDocumentUseCase(
-        document_repo=pg_document_repo,
-        chunk_repo=pg_chunk_repo,
-        embedding_repo=pg_embedding_repo,
-        project_repo=pg_project_repo,
-        embed_model_repo=pg_embed_model_repo,
-        loader=loader,
-        splitter=splitter,
-        embedder_pool=embedder_pool,
+        process_document_usecase=process_document_usecase,
     )
     golden_dataset_usecase = GoldenDatasetUseCase(golden_repo=pg_golden_repo, chunk_repo=pg_chunk_repo)
     generate_golden_usecase = GenerateGoldenUseCase(

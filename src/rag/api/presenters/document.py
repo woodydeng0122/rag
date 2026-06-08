@@ -1,8 +1,10 @@
 from rag.api.schemas.document import (
+    BatchProcessItem,
     BatchProcessResponse,
     ChunkListResponse,
     ChunkResponse,
     DocumentResponse,
+    DocumentStatusEnum,
     EmbeddingResponse,
     ProcessDocumentResponse,
     SourceContentResponse,
@@ -14,6 +16,21 @@ from rag.application.results.batch_process_result import BatchProcessResult, Chu
 from rag.domain.entities.chunk import Chunk
 from rag.domain.entities.document import Document, DocumentStatus
 from rag.domain.entities.embedding import Embedding
+
+# 领域枚举 → API 枚举映射
+_DOMAIN_TO_API_STATUS = {
+    DocumentStatus.UPLOADED: DocumentStatusEnum.UPLOADED,
+    DocumentStatus.CHUNKING: DocumentStatusEnum.CHUNKING,
+    DocumentStatus.CHUNKED: DocumentStatusEnum.CHUNKED,
+    DocumentStatus.EMBEDDING: DocumentStatusEnum.EMBEDDING,
+    DocumentStatus.EMBEDDED: DocumentStatusEnum.EMBEDDED,
+    DocumentStatus.READY: DocumentStatusEnum.READY,
+    DocumentStatus.ERROR: DocumentStatusEnum.ERROR,
+}
+
+
+def _to_api_status(status: DocumentStatus) -> DocumentStatusEnum:
+    return _DOMAIN_TO_API_STATUS[status]
 
 
 class DocumentPresenter:
@@ -31,7 +48,7 @@ class DocumentPresenter:
             file_size=d.file_size,
             file_type=d.file_type,
             checksum=d.checksum,
-            status=d.status.value,
+            status=_to_api_status(d.status),
             splitter_config=SplitterConfigSchema(
                 strategy=cfg.strategy,
                 chunk_size=cfg.chunk_size,
@@ -55,7 +72,7 @@ class DocumentPresenter:
                     "filename": d.filename,
                     "file_type": d.file_type,
                     "file_size": d.file_size,
-                    "status": d.status.value,
+                    "status": _to_api_status(d.status),
                 }
                 for d in documents
             ],
@@ -66,14 +83,13 @@ class DocumentPresenter:
     def to_process_response(d: Document) -> ProcessDocumentResponse:
         return ProcessDocumentResponse(
             id=d.id,
-            status=d.status.value,
+            status=_to_api_status(d.status),
             chunk_count=d.chunk_count,
             error_message=d.error_message,
         )
 
     @staticmethod
     def to_batch_response(result: BatchProcessResult) -> BatchProcessResponse:
-        from rag.api.schemas.document import BatchProcessItem
         return BatchProcessResponse(
             total=result.total,
             success=result.success,
@@ -81,7 +97,7 @@ class DocumentPresenter:
             results=[
                 BatchProcessItem(
                     id=item.id,
-                    status=item.status,
+                    status=DocumentStatusEnum(item.status),
                     chunk_count=item.chunk_count,
                     error_message=item.error_message,
                 )

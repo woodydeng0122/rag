@@ -1,4 +1,24 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class GoldenStatusEnum(str, Enum):
+    """API 层黄金记录状态枚举 — 与领域层解耦"""
+
+    PENDING_REVIEW = "pending_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class TaskStatusEnum(str, Enum):
+    """API 层生成任务状态枚举 — 与领域层解耦"""
+
+    RUNNING = "running"
+    PAUSED = "paused"
+    CANCELLED = "cancelled"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class CreateGoldenDatasetRequest(BaseModel):
@@ -11,7 +31,7 @@ class UpdateGoldenDatasetRequest(BaseModel):
     query: str | None = Field(None, description="查询文本")
     ground_truth_chunks: list[str] | None = Field(None, description="关联的真实分块 ID 列表")
     reference_answer: str | None = Field(None, description="参考答案")
-    status: str | None = Field(None, description="状态: pending_review / approved / rejected")
+    status: GoldenStatusEnum | None = Field(None, description="状态")
 
 
 class EvaluationMetricsResponse(BaseModel):
@@ -27,7 +47,7 @@ class GoldenDatasetResponse(BaseModel):
     query: str
     ground_truth_chunks: list[str]
     reference_answer: str = ""
-    status: str = "approved"
+    status: GoldenStatusEnum = GoldenStatusEnum.APPROVED
     evaluation: EvaluationMetricsResponse | None = None
     created_at: str = ""
     metadata: dict = Field(default_factory=dict)
@@ -76,13 +96,13 @@ class GenerateGoldenRequest(BaseModel):
 
 class GenerateGoldenResponse(BaseModel):
     task_id: str
-    status: str = "running"
+    status: TaskStatusEnum = TaskStatusEnum.RUNNING
 
 
 class GenerationTaskResponse(BaseModel):
     id: str
     project_id: str
-    status: str
+    status: TaskStatusEnum
     total: int = 0
     completed: int = 0
     failed: int = 0
