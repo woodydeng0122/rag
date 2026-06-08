@@ -12,6 +12,7 @@ async def handle(args, settings):
     from rag.infra.database.connection import init_pool, close_pool
     from rag.infra.database.migrator import check_migrations, run_migrations
 
+    print(settings)
     await init_pool(
         host=settings.db_host,
         port=settings.db_port,

@@ -18,10 +18,7 @@ description: "Generate golden dataset entries from a local document. Invoke when
 
 **续生成触发：** 用户对同一文档要求再生成一条，常见说法：
 
-- "再生成一条"
-- "再来一个"
-- "继续生成"
-- "换一个问题"
+- "继续"
 
 此时直接从 Step 2 开始，复用上下文中已有的 project_id 和分块列表，跳过 Step 1。
 
@@ -30,9 +27,13 @@ description: "Generate golden dataset entries from a local document. Invoke when
 | 类型 | 路径 | 说明 |
 |------|------|------|
 | 中间产物（脚本等） | `docs/temp/` | 不删除，保留备查 |
-| 黄金数据集 | `docs/golden/{filename}.jsonl` | 追加写入，前端导入 |
+| 黄金数据集 | `golden/{relative_path}.jsonl` | 追加写入，前端导入 |
 
-`{filename}` 取文档原始文件名（去扩展名），如 `alternatives.jsonl`。
+黄金数据集路径与源文档 `docs/` 路径一一对应：去掉源路径的 `docs/` 前缀，映射到 `golden/` 目录下，文件扩展名改为 `.jsonl`。
+
+示例：
+- 源文档 `docs/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.md` → `golden/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.jsonl`
+- 源文档 `docs/fast-api/body.md` → `golden/fast-api/body.jsonl`
 
 ## 上下文管理
 
@@ -41,7 +42,7 @@ description: "Generate golden dataset entries from a local document. Invoke when
 ```
 文档路径: <storage_key>
 项目 ID: <project_id>
-文件名: <filename>（去扩展名，用于 JSONL 命名）
+JSONL 路径: golden/<去掉 docs/ 前缀的相对路径>.jsonl
 分块列表:
   - index=0, id=<chunk_id>, heading=<heading>
   - index=1, id=<chunk_id>, heading=<heading>
@@ -60,7 +61,7 @@ description: "Generate golden dataset entries from a local document. Invoke when
 
 从输出中提取：
 - **项目 ID** — 输出中的 `项目 ID: <uuid>` 行
-- **文件名** — 输出中的 `文件名: <name>` 行（去扩展名用于 JSONL 命名）
+- **JSONL 路径** — 根据源文档路径计算：去掉 `docs/` 前缀，将剩余路径的扩展名改为 `.jsonl`，前缀改为 `golden/`
 - **分块列表** — 每个分块的 `id`、`index`、`heading`、`content`
 
 将上述信息保存到上下文中供续生成使用。
@@ -77,11 +78,17 @@ description: "Generate golden dataset entries from a local document. Invoke when
 
 ### Step 3: 追加写入 JSONL
 
-将生成的黄金数据追加到 `docs/golden/{filename}.jsonl`：
+将生成的黄金数据追加到 `golden/{relative_path}.jsonl`（路径与源文档 `docs/` 路径一一对应）：
 
 ```python
 # 每行一条 JSON，追加模式
 import json, os
+
+# 源文档路径: docs/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.md
+# JSONL 路径:  golden/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.jsonl
+source_path = "docs/4d73bb12-fea0-4d0d-8e51-8161c3804a71/docs/alternatives.md"
+relative = source_path.removeprefix("docs/")  # 去掉 docs/ 前缀
+jsonl_path = os.path.join("golden", os.path.splitext(relative)[0] + ".jsonl")
 
 entry = {
     "query": "生成的问题",
@@ -90,8 +97,8 @@ entry = {
     "metadata": {}
 }
 
-os.makedirs("docs/golden", exist_ok=True)
-with open("docs/golden/{filename}.jsonl", "a", encoding="utf-8") as f:
+os.makedirs(os.path.dirname(jsonl_path), exist_ok=True)
+with open(jsonl_path, "a", encoding="utf-8") as f:
     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 ```
 
@@ -99,7 +106,7 @@ with open("docs/golden/{filename}.jsonl", "a", encoding="utf-8") as f:
 
 向用户展示：
 - 生成的黄金数据条目（query、ground_truth_chunks、reference_answer）
-- JSONL 文件路径：`docs/golden/{filename}.jsonl`
+- JSONL 文件路径：`golden/{relative_path}.jsonl`
 - 提示用户可在前端导入该 JSONL 文件
 
 ## 注意事项
