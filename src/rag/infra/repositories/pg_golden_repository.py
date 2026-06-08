@@ -33,7 +33,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"{_SELECT} FROM golden_dataset WHERE id = $1",
+                f"{_SELECT} FROM golden WHERE id = $1",
                 _to_uuid(record_id),
             )
         if row is None:
@@ -44,7 +44,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f"{_SELECT} FROM golden_dataset WHERE project_id = $1 ORDER BY created_at DESC",
+                f"{_SELECT} FROM golden WHERE project_id = $1 ORDER BY created_at DESC",
                 _to_uuid(project_id),
             )
         return [_row_to_record(row) for row in rows]
@@ -55,7 +55,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f"{_SELECT} FROM golden_dataset WHERE project_id = $1 AND status = $2 ORDER BY created_at DESC",
+                f"{_SELECT} FROM golden WHERE project_id = $1 AND status = $2 ORDER BY created_at DESC",
                 _to_uuid(project_id),
                 status.value,
             )
@@ -91,7 +91,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             result = await conn.execute(
-                "DELETE FROM golden_dataset WHERE id = $1",
+                "DELETE FROM golden WHERE id = $1",
                 _to_uuid(record_id),
             )
             return result == "DELETE 1"
@@ -127,7 +127,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f"""{_SELECT} FROM golden_dataset
+                f"""{_SELECT} FROM golden
                    WHERE project_id = $1 AND $2 = ANY(ground_truth_chunks)
                    ORDER BY created_at DESC""",
                 _to_uuid(project_id),
@@ -147,7 +147,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT c.document_id, COUNT(DISTINCT gd.id) AS golden_count
-                   FROM golden_dataset gd
+                   FROM golden gd
                    JOIN chunk c ON c.id = ANY(gd.ground_truth_chunks)
                    WHERE c.document_id = ANY($1::uuid[])
                    GROUP BY c.document_id""",
@@ -164,7 +164,7 @@ class PgGoldenRepository(GoldenRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                f"""{_SELECT} FROM golden_dataset gd
+                f"""{_SELECT} FROM golden gd
                    JOIN chunk c ON c.id = ANY(gd.ground_truth_chunks)
                    WHERE gd.project_id = $1 AND c.document_id = $2
                    ORDER BY gd.created_at DESC""",
