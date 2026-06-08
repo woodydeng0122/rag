@@ -1,3 +1,5 @@
+from rag.application.results.document_result import DocumentWithGoldenCount
+from rag.application.results.batch_process_result import ChunksWithDoc, SourceContentWithDoc
 from rag.domain.entities.chunk import Chunk
 from rag.domain.entities.document import Document
 from rag.domain.entities.embedding import Embedding
@@ -5,6 +7,7 @@ from rag.domain.ports.document_repository import DocumentRepositoryPort
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.file_storage import FileStoragePort
+from rag.domain.ports.golden_dataset_repository import GoldenDatasetRepositoryPort
 
 
 class DocumentUseCase:
@@ -16,14 +19,29 @@ class DocumentUseCase:
         chunk_repo: ChunkRepositoryPort,
         embedding_repo: EmbeddingRepositoryPort,
         file_storage: FileStoragePort,
+        golden_repo: GoldenDatasetRepositoryPort | None = None,
     ):
         self._document_repo = document_repo
         self._chunk_repo = chunk_repo
         self._embedding_repo = embedding_repo
         self._file_storage = file_storage
+        self._golden_repo = golden_repo
 
     async def list_by_project(self, project_id: str) -> list[Document]:
         return await self._document_repo.list_by_project(project_id)
+
+    async def list_with_golden_counts(self, project_id: str) -> list[DocumentWithGoldenCount]:
+        """列出项目文档并附带黄金记录数量"""
+        documents = await self._document_repo.list_by_project(project_id)
+        if not documents or self._golden_repo is None:
+            return [DocumentWithGoldenCount(document=d) for d in documents]
+
+        doc_ids = [d.id for d in documents]
+        golden_counts = await self._golden_repo.count_by_document_ids(doc_ids)
+        return [
+            DocumentWithGoldenCount(document=d, golden_count=golden_counts.get(d.id, 0))
+            for d in documents
+        ]
 
     async def get(self, document_id: str) -> Document | None:
         return await self._document_repo.get_by_id(document_id)
@@ -39,6 +57,18 @@ class DocumentUseCase:
         if doc is None:
             raise ValueError(f"文档 {document_id} 不存在")
         return await self._chunk_repo.list_by_document(document_id)
+
+    async def get_chunks_with_doc(self, document_id: str) -> ChunksWithDoc:
+        """获取文档分块列表，附带文档信息"""
+        doc = await self._document_repo.get_by_id(document_id)
+        if doc is None:
+            raise ValueError(f"文档 {document_id} 不存在")
+        chunks = await self._chunk_repo.list_by_document(document_id)
+        return ChunksWithDoc(
+            chunks=chunks,
+            document_id=document_id,
+            file_type=doc.file_type,
+        )
 
     async def list_chunks_by_project(self, project_id: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
         return await self._chunk_repo.list_by_project(project_id, limit, offset)
@@ -59,3 +89,19 @@ class DocumentUseCase:
         if not self._file_storage.exists(doc.storage_key):
             raise FileNotFoundError(f"源文件不存在: {doc.storage_key}")
         return self._file_storage.read_text(doc.storage_key)
+
+    async def get_source_content_with_doc(self, document_id: str) -> SourceContentWithDoc:
+        """读取文档源文件内容，附带文档信息"""
+        doc = await self._document_repo.get_by_id(document_id)
+        if doc is None:
+            raise ValueError(f"文档 {document_id} 不存在")
+        if not doc.is_text_file:
+            raise ValueError(f"{doc.file_type} 文件不支持源文件预览")
+        if not self._file_storage.exists(doc.storage_key):
+            raise FileNotFoundError(f"源文件不存在: {doc.storage_key}")
+        content = self._file_storage.read_text(doc.storage_key)
+        return SourceContentWithDoc(
+            content=content,
+            document_id=document_id,
+            file_type=doc.file_type,
+        )

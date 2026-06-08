@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from rag.application.task_manager import TaskManager
 from rag.application.usecases.ask import AskUseCase
+from rag.application.usecases.batch_process_document import BatchProcessDocumentUseCase
 from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
 from rag.application.usecases.evaluate import EvaluateUseCase
@@ -25,6 +26,7 @@ class Container:
     # 用例
     upload_usecase: UploadUseCase
     process_document_usecase: ProcessDocumentUseCase
+    batch_process_usecase: BatchProcessDocumentUseCase
     golden_dataset_usecase: GoldenDatasetUseCase
     generate_golden_usecase: GenerateGoldenUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
@@ -122,6 +124,16 @@ def build_container(settings: Settings | None = None) -> Container:
         splitter=splitter,
         embedder_pool=embedder_pool,
     )
+    batch_process_usecase = BatchProcessDocumentUseCase(
+        document_repo=pg_document_repo,
+        chunk_repo=pg_chunk_repo,
+        embedding_repo=pg_embedding_repo,
+        project_repo=pg_project_repo,
+        embed_model_repo=pg_embed_model_repo,
+        loader=loader,
+        splitter=splitter,
+        embedder_pool=embedder_pool,
+    )
     golden_dataset_usecase = GoldenDatasetUseCase(golden_repo=pg_golden_repo, chunk_repo=pg_chunk_repo)
     generate_golden_usecase = GenerateGoldenUseCase(
         llm=llm,
@@ -138,6 +150,7 @@ def build_container(settings: Settings | None = None) -> Container:
         chunk_repo=pg_chunk_repo,
         embedding_repo=pg_embedding_repo,
         file_storage=file_storage,
+        golden_repo=pg_golden_repo,
     )
     embed_model_usecase = EmbedModelUseCase(embed_model_repo=pg_embed_model_repo, project_repo=pg_project_repo, model_scanner=model_scanner)
     profile_usecase = ProfileUseCase(
@@ -162,6 +175,7 @@ def build_container(settings: Settings | None = None) -> Container:
     _container = Container(
         upload_usecase=upload_usecase,
         process_document_usecase=process_document_usecase,
+        batch_process_usecase=batch_process_usecase,
         golden_dataset_usecase=golden_dataset_usecase,
         generate_golden_usecase=generate_golden_usecase,
         scan_embed_models_usecase=scan_embed_models_usecase,

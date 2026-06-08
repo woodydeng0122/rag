@@ -29,10 +29,8 @@ async def list_documents(
     project_id: str,
     container: Container = Depends(get_container),
 ):
-    documents = await container.document_usecase.list_by_project(project_id)
-    doc_ids = [d.id for d in documents]
-    golden_counts = await container.golden_dataset_usecase.count_golden_records_by_documents(doc_ids) if doc_ids else {}
-    return [DocumentPresenter.to_document_response(d, golden_count=golden_counts.get(d.id, 0)) for d in documents]
+    results = await container.document_usecase.list_with_golden_counts(project_id)
+    return [DocumentPresenter.to_document_response(r) for r in results]
 
 
 @router.delete("/documents/{document_id}")
@@ -56,14 +54,10 @@ async def list_chunks(
 ):
     """获取文档的分块列表"""
     try:
-        chunks = await container.document_usecase.list_chunks(document_id)
+        result = await container.document_usecase.get_chunks_with_doc(document_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
-    doc = await container.document_usecase.get(document_id)
-    return DocumentPresenter.to_chunk_list_response(
-        chunks, document_id=document_id, file_type=doc.file_type if doc else ""
-    )
+    return DocumentPresenter.to_chunk_list_response(result)
 
 
 @router.get("/documents/{document_id}/source")
@@ -73,7 +67,7 @@ async def get_source_content(
 ):
     """获取文档源文件内容（仅支持文本类型）"""
     try:
-        content = await container.document_usecase.get_source_content(document_id)
+        result = await container.document_usecase.get_source_content_with_doc(document_id)
     except ValueError as e:
         if "PDF" in str(e):
             raise HTTPException(status_code=400, detail=str(e))
@@ -87,12 +81,7 @@ async def get_source_content(
         })
         raise HTTPException(status_code=500, detail=f"读取文件失败: {e}")
 
-    doc = await container.document_usecase.get(document_id)
-    return DocumentPresenter.to_source_content_response(
-        document_id=document_id,
-        file_type=doc.file_type if doc else "",
-        content=content,
-    )
+    return DocumentPresenter.to_source_content_response(result)
 
 
 @router.get("/chunks/{chunk_id}/embedding")
@@ -140,22 +129,5 @@ async def batch_process_documents(
     container: Container = Depends(get_container),
 ):
     """批量处理文档：对每个 document_id 依次执行处理"""
-    results = []
-    success_count = 0
-    failed_count = 0
-
-    for doc_id in req.document_ids:
-        try:
-            doc = await container.process_document_usecase.execute(doc_id)
-            results.append(DocumentPresenter.to_batch_item(doc))
-            success_count += 1
-        except Exception as e:
-            results.append(DocumentPresenter.to_batch_failed_item(doc_id, str(e)))
-            failed_count += 1
-
-    return DocumentPresenter.to_batch_response(
-        total=len(req.document_ids),
-        success=success_count,
-        failed=failed_count,
-        results=results,
-    )
+    result = await container.batch_process_usecase.execute(req.document_ids)
+    return DocumentPresenter.to_batch_response(result)

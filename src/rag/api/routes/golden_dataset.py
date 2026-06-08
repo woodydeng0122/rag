@@ -238,18 +238,12 @@ async def pause_generation_task(
     container: Container = Depends(get_container),
 ):
     """暂停生成任务"""
-    task = await container.generate_golden_usecase.get_task(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="生成任务不存在")
-    if task.status != TaskStatus.RUNNING:
-        raise HTTPException(status_code=400, detail=f"无法暂停状态为 {task.status.value} 的任务")
-
-    runner = container.task_manager.get(task_id)
-    if runner:
-        runner.pause_event.clear()
-
-    task.pause()
-    await container.generate_golden_usecase.task_repo.update(task)
+    try:
+        await container.generate_golden_usecase.pause_task(task_id, container.task_manager)
+    except ValueError as e:
+        if "不存在" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     return {"detail": "任务已暂停"}
 
 
@@ -260,18 +254,12 @@ async def resume_generation_task(
     container: Container = Depends(get_container),
 ):
     """继续生成任务"""
-    task = await container.generate_golden_usecase.get_task(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="生成任务不存在")
-    if task.status != TaskStatus.PAUSED:
-        raise HTTPException(status_code=400, detail=f"无法继续状态为 {task.status.value} 的任务")
-
-    runner = container.task_manager.get(task_id)
-    if runner:
-        runner.pause_event.set()
-
-    task.resume()
-    await container.generate_golden_usecase.task_repo.update(task)
+    try:
+        await container.generate_golden_usecase.resume_task(task_id, container.task_manager)
+    except ValueError as e:
+        if "不存在" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     return {"detail": "任务已继续"}
 
 
@@ -282,21 +270,12 @@ async def cancel_generation_task(
     container: Container = Depends(get_container),
 ):
     """取消生成任务"""
-    task = await container.generate_golden_usecase.get_task(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="生成任务不存在")
-    if task.status not in (TaskStatus.RUNNING, TaskStatus.PAUSED):
-        raise HTTPException(status_code=400, detail=f"无法取消状态为 {task.status.value} 的任务")
-
-    runner = container.task_manager.get(task_id)
-    if runner:
-        runner.cancel_flag.set()
-        if task.status == TaskStatus.PAUSED:
-            runner.pause_event.set()  # 解除暂停以便 Runner 能检查取消标志
-
-    task.cancel()
-    await container.generate_golden_usecase.task_repo.update(task)
-    container.task_manager.remove(task_id)
+    try:
+        await container.generate_golden_usecase.cancel_task(task_id, container.task_manager)
+    except ValueError as e:
+        if "不存在" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     return {"detail": "任务已取消"}
 
 
@@ -307,37 +286,15 @@ async def retry_failed_generation(
     container: Container = Depends(get_container),
 ):
     """重试失败项"""
-    task = await container.generate_golden_usecase.get_task(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail="生成任务不存在")
-    if task.status not in (TaskStatus.COMPLETED, TaskStatus.CANCELLED):
-        raise HTTPException(status_code=400, detail="只能重试已完成或已取消的任务")
-
-    runner = container.task_manager.get(task_id)
-    if runner is None or not runner.failed_items:
-        raise HTTPException(status_code=400, detail="没有失败项可重试")
-
-    # 恢复任务状态为 running
-    task.status = TaskStatus.RUNNING
-    await container.generate_golden_usecase.task_repo.update(task)
-
-    # 重新注册 Runner 并启动重试
-    container.task_manager.register(task_id, runner)
-    runner.pause_event.set()
-    runner.cancel_flag.clear()
-
-    import asyncio
-
-    async def _retry_and_cleanup():
-        try:
-            async for _ in runner.retry_failed():
-                pass
-        finally:
-            container.task_manager.remove(task_id)
-
-    asyncio.create_task(_retry_and_cleanup())
-
-    return {"detail": f"正在重试 {len(runner.failed_items)} 个失败项"}
+    try:
+        retry_count = await container.generate_golden_usecase.retry_failed_task(
+            task_id, container.task_manager
+        )
+    except ValueError as e:
+        if "不存在" in str(e):
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"detail": f"正在重试 {retry_count} 个失败项"}
 
 
 @router.post("/golden-datasets/batch-approve", response_model=BatchStatusUpdateResponse)

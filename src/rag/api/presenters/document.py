@@ -1,5 +1,4 @@
 from rag.api.schemas.document import (
-    BatchProcessItem,
     BatchProcessResponse,
     ChunkListResponse,
     ChunkResponse,
@@ -10,6 +9,8 @@ from rag.api.schemas.document import (
     SplitterConfigSchema,
 )
 from rag.api.schemas.upload import UploadResponse
+from rag.application.results.document_result import DocumentWithGoldenCount
+from rag.application.results.batch_process_result import BatchProcessResult, ChunksWithDoc, SourceContentWithDoc
 from rag.domain.entities.chunk import Chunk
 from rag.domain.entities.document import Document, DocumentStatus
 from rag.domain.entities.embedding import Embedding
@@ -19,7 +20,8 @@ class DocumentPresenter:
     """文档领域实体 → API 响应转换"""
 
     @staticmethod
-    def to_document_response(d: Document, golden_count: int = 0) -> DocumentResponse:
+    def to_document_response(r: DocumentWithGoldenCount) -> DocumentResponse:
+        d = r.document
         cfg = d.splitter_config
         return DocumentResponse(
             id=d.id,
@@ -38,7 +40,7 @@ class DocumentPresenter:
                 max_chars=cfg.max_chars,
             ),
             chunk_count=d.chunk_count,
-            golden_record_count=golden_count,
+            golden_record_count=r.golden_count,
             error_message=d.error_message,
             created_at=d.created_at.isoformat() if d.created_at else "",
             updated_at=d.updated_at.isoformat() if d.updated_at else "",
@@ -70,40 +72,39 @@ class DocumentPresenter:
         )
 
     @staticmethod
-    def to_batch_item(doc: Document) -> BatchProcessItem:
-        return BatchProcessItem(
-            id=doc.id,
-            status=doc.status.value,
-            chunk_count=doc.chunk_count,
-            error_message=doc.error_message,
-        )
-
-    @staticmethod
-    def to_batch_failed_item(doc_id: str, error_message: str) -> BatchProcessItem:
-        return BatchProcessItem(
-            id=doc_id,
-            status=DocumentStatus.ERROR.value,
-            error_message=error_message,
-        )
-
-    @staticmethod
-    def to_batch_response(
-        total: int, success: int, failed: int, results: list[BatchProcessItem]
-    ) -> BatchProcessResponse:
+    def to_batch_response(result: BatchProcessResult) -> BatchProcessResponse:
+        from rag.api.schemas.document import BatchProcessItem
         return BatchProcessResponse(
-            total=total,
-            success=success,
-            failed=failed,
-            results=results,
+            total=result.total,
+            success=result.success,
+            failed=result.failed,
+            results=[
+                BatchProcessItem(
+                    id=item.id,
+                    status=item.status,
+                    chunk_count=item.chunk_count,
+                    error_message=item.error_message,
+                )
+                for item in result.results
+            ],
         )
 
     @staticmethod
     def to_chunk_list_response(
-        chunks: list[Chunk],
+        data: ChunksWithDoc | list[Chunk],
         document_id: str = "",
         file_type: str = "",
         truncate: bool = False,
     ) -> ChunkListResponse:
+        if isinstance(data, ChunksWithDoc):
+            chunks = data.chunks
+            doc_id = data.document_id
+            ftype = data.file_type
+        else:
+            chunks = data
+            doc_id = document_id
+            ftype = file_type
+
         chunk_responses = []
         for c in chunks:
             content = c.content
@@ -116,23 +117,27 @@ class DocumentPresenter:
                     heading=c.heading,
                     content=content,
                     source_file=c.source_file,
-                    file_type=file_type,
+                    file_type=ftype,
                 )
             )
         return ChunkListResponse(
-            document_id=document_id,
+            document_id=doc_id,
             total=len(chunk_responses),
             chunks=chunk_responses,
         )
 
     @staticmethod
-    def to_source_content_response(
-        document_id: str, file_type: str, content: str
-    ) -> SourceContentResponse:
+    def to_source_content_response(data: SourceContentWithDoc | str, **kwargs) -> SourceContentResponse:
+        if isinstance(data, SourceContentWithDoc):
+            return SourceContentResponse(
+                document_id=data.document_id,
+                file_type=data.file_type,
+                content=data.content,
+            )
         return SourceContentResponse(
-            document_id=document_id,
-            file_type=file_type,
-            content=content,
+            document_id=kwargs.get("document_id", ""),
+            file_type=kwargs.get("file_type", ""),
+            content=data,
         )
 
     @staticmethod
