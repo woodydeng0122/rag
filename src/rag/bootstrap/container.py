@@ -2,30 +2,44 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from rag.application.task_manager import TaskManager
+from rag.application.usecases.ask import AskUseCase
+from rag.application.usecases.document import DocumentUseCase
+from rag.application.usecases.embed_model import EmbedModelUseCase
+from rag.application.usecases.evaluate import EvaluateUseCase
+from rag.application.usecases.generate_golden import GenerateGoldenUseCase
+from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
+from rag.application.usecases.process_document import ProcessDocumentUseCase
+from rag.application.usecases.profile import ProfileUseCase
+from rag.application.usecases.project import ProjectUseCase
+from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
+from rag.application.usecases.upload import UploadUseCase
 from rag.bootstrap.settings import Settings
+from rag.infra.embedder.model_scanner import ModelScanner
 
 
 @dataclass
 class Container:
     """组合根容器 — 持有所有用例实例和配置"""
+
     # 用例
-    upload_usecase: object
-    process_document_usecase: object
-    golden_dataset_usecase: object
-    generate_golden_usecase: object
-    scan_embed_models_usecase: object
-    project_usecase: object
-    document_usecase: object
-    embed_model_usecase: object
-    profile_usecase: object
-    ask: object
-    retrieve: object
-    evaluate: object
+    upload_usecase: UploadUseCase
+    process_document_usecase: ProcessDocumentUseCase
+    golden_dataset_usecase: GoldenDatasetUseCase
+    generate_golden_usecase: GenerateGoldenUseCase
+    scan_embed_models_usecase: ScanEmbedModelsUseCase
+    project_usecase: ProjectUseCase
+    document_usecase: DocumentUseCase
+    embed_model_usecase: EmbedModelUseCase
+    profile_usecase: ProfileUseCase
+    ask: AskUseCase
+    retrieve: RetrieveUseCase
+    evaluate: EvaluateUseCase
     settings: Settings
     # 基础设施
-    model_scanner: object
+    model_scanner: ModelScanner
     # 任务管理
-    task_manager: object
+    task_manager: TaskManager
 
 
 # 模块级单例
@@ -36,19 +50,7 @@ def build_container(settings: Settings | None = None) -> Container:
     global _container
 
     print("[LOAD] 加载用例模块...", flush=True)
-    from rag.application.usecases.ask import AskUseCase
     from rag.application.usecases.retrieve import RetrieveUseCase
-    from rag.application.usecases.evaluate import EvaluateUseCase
-    from rag.application.usecases.golden_dataset import GoldenDatasetUseCase
-    from rag.application.usecases.generate_golden import GenerateGoldenUseCase
-    from rag.application.usecases.upload import UploadUseCase
-    from rag.application.usecases.process_document import ProcessDocumentUseCase
-    from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
-    from rag.application.usecases.project import ProjectUseCase
-    from rag.application.usecases.document import DocumentUseCase
-    from rag.application.usecases.embed_model import EmbedModelUseCase
-    from rag.application.usecases.profile import ProfileUseCase
-    from rag.application.task_manager import TaskManager
 
     print("[LOAD] 加载仓储模块...", flush=True)
     from rag.infra.repositories.pg_project_repository import PgProjectRepository
@@ -63,7 +65,6 @@ def build_container(settings: Settings | None = None) -> Container:
     print("[LOAD] 加载基础设施模块[SentenceTransformerEmbedder]...", flush=True)
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     print("[LOAD] 加载其他基础设施模块...", flush=True)
-    from rag.infra.embedder.model_scanner import ModelScanner
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM

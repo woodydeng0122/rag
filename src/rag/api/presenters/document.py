@@ -29,7 +29,7 @@ class DocumentPresenter:
             file_size=d.file_size,
             file_type=d.file_type,
             checksum=d.checksum,
-            status=d.status,
+            status=d.status.value,
             splitter_config=SplitterConfigSchema(
                 strategy=cfg.strategy,
                 chunk_size=cfg.chunk_size,
@@ -53,7 +53,7 @@ class DocumentPresenter:
                     "filename": d.filename,
                     "file_type": d.file_type,
                     "file_size": d.file_size,
-                    "status": d.status,
+                    "status": d.status.value,
                 }
                 for d in documents
             ],
@@ -64,7 +64,7 @@ class DocumentPresenter:
     def to_process_response(d: Document) -> ProcessDocumentResponse:
         return ProcessDocumentResponse(
             id=d.id,
-            status=d.status,
+            status=d.status.value,
             chunk_count=d.chunk_count,
             error_message=d.error_message,
         )
@@ -73,7 +73,7 @@ class DocumentPresenter:
     def to_batch_item(doc: Document) -> BatchProcessItem:
         return BatchProcessItem(
             id=doc.id,
-            status=doc.status,
+            status=doc.status.value,
             chunk_count=doc.chunk_count,
             error_message=doc.error_message,
         )
@@ -82,7 +82,7 @@ class DocumentPresenter:
     def to_batch_failed_item(doc_id: str, error_message: str) -> BatchProcessItem:
         return BatchProcessItem(
             id=doc_id,
-            status=DocumentStatus.ERROR,
+            status=DocumentStatus.ERROR.value,
             error_message=error_message,
         )
 

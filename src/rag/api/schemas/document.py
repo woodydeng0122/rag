@@ -1,8 +1,5 @@
 from pydantic import BaseModel
 
-from rag.domain.entities.document import DocumentStatus
-from rag.domain.value_objects.splitter_config import SplitterConfig
-
 
 class SplitterConfigSchema(BaseModel):
     strategy: str = "section_heading"
@@ -20,7 +17,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_type: str
     checksum: str
-    status: DocumentStatus
+    status: str
     splitter_config: SplitterConfigSchema
     chunk_count: int = 0
     golden_record_count: int = 0
