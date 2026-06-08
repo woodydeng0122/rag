@@ -50,13 +50,8 @@ class Container:
 _container: Container | None = None
 
 
-def build_container(settings: Settings | None = None) -> Container:
-    global _container
-
-    print("[LOAD] 加载用例模块...", flush=True)
-    from rag.application.usecases.retrieve import RetrieveUseCase
-
-    print("[LOAD] 加载仓储模块...", flush=True)
+def _build_infra(settings: Settings):
+    """实例化基础设施层：仓储、适配器、检索器"""
     from rag.infra.repositories.pg_project_repository import PgProjectRepository
     from rag.infra.repositories.pg_document_repository import PgDocumentRepository
     from rag.infra.repositories.pg_chunk_repository import PgChunkRepository
@@ -65,10 +60,7 @@ def build_container(settings: Settings | None = None) -> Container:
     from rag.infra.repositories.pg_golden_dataset_repository import PgGoldenDatasetRepository
     from rag.infra.repositories.pg_generation_task_repository import PgGenerationTaskRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
-
-    print("[LOAD] 加载基础设施模块[SentenceTransformerEmbedder]...", flush=True)
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
-    print("[LOAD] 加载其他基础设施模块...", flush=True)
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM
@@ -88,6 +80,7 @@ def build_container(settings: Settings | None = None) -> Container:
     pg_profile_repo = PgProfileRepository()
 
     # 基础设施适配器
+    print("[INIT] 初始化基础设施适配器...", flush=True)
     embedder_pool = EmbedderPool(factory=SentenceTransformerEmbedder, max_size=3)
     model_scanner = ModelScanner(models_dir="models")
     file_storage = LocalFileStorage()
@@ -102,7 +95,7 @@ def build_container(settings: Settings | None = None) -> Container:
         model=settings.dashscope_model,
     )
 
-    # 检索器 — 使用 PG 仓储
+    # 检索器
     retriever = CosineRetriever(
         embedder_pool=embedder_pool,
         embedding_repo=pg_embedding_repo,
@@ -110,83 +103,128 @@ def build_container(settings: Settings | None = None) -> Container:
         project_repo=pg_project_repo,
     )
 
-    # 用例组装
+    return {
+        "pg_project_repo": pg_project_repo,
+        "pg_document_repo": pg_document_repo,
+        "pg_chunk_repo": pg_chunk_repo,
+        "pg_embedding_repo": pg_embedding_repo,
+        "pg_embed_model_repo": pg_embed_model_repo,
+        "pg_golden_repo": pg_golden_repo,
+        "pg_generation_task_repo": pg_generation_task_repo,
+        "pg_profile_repo": pg_profile_repo,
+        "embedder_pool": embedder_pool,
+        "model_scanner": model_scanner,
+        "file_storage": file_storage,
+        "loader": loader,
+        "splitter": splitter,
+        "llm": llm,
+        "retriever": retriever,
+    }
+
+
+def _build_usecases(infra: dict):
+    """组装应用层用例"""
     scan_embed_models_usecase = ScanEmbedModelsUseCase(
-        embed_model_repo=pg_embed_model_repo,
-        model_scanner=model_scanner,
+        embed_model_repo=infra["pg_embed_model_repo"],
+        model_scanner=infra["model_scanner"],
     )
-    upload_usecase = UploadUseCase(document_repo=pg_document_repo, file_storage=file_storage)
+    upload_usecase = UploadUseCase(
+        document_repo=infra["pg_document_repo"],
+        file_storage=infra["file_storage"],
+    )
     process_document_usecase = ProcessDocumentUseCase(
-        document_repo=pg_document_repo,
-        chunk_repo=pg_chunk_repo,
-        embedding_repo=pg_embedding_repo,
-        project_repo=pg_project_repo,
-        embed_model_repo=pg_embed_model_repo,
-        loader=loader,
-        splitter=splitter,
-        embedder_pool=embedder_pool,
+        document_repo=infra["pg_document_repo"],
+        chunk_repo=infra["pg_chunk_repo"],
+        embedding_repo=infra["pg_embedding_repo"],
+        project_repo=infra["pg_project_repo"],
+        embed_model_repo=infra["pg_embed_model_repo"],
+        loader=infra["loader"],
+        splitter=infra["splitter"],
+        embedder_pool=infra["embedder_pool"],
     )
     batch_process_usecase = BatchProcessDocumentUseCase(
         process_document_usecase=process_document_usecase,
     )
-    golden_dataset_usecase = GoldenDatasetUseCase(golden_repo=pg_golden_repo, chunk_repo=pg_chunk_repo)
+    golden_dataset_usecase = GoldenDatasetUseCase(
+        golden_repo=infra["pg_golden_repo"],
+        chunk_repo=infra["pg_chunk_repo"],
+    )
     generate_golden_usecase = GenerateGoldenUseCase(
-        llm=llm,
-        golden_repo=pg_golden_repo,
-        chunk_repo=pg_chunk_repo,
-        task_repo=pg_generation_task_repo,
+        llm=infra["llm"],
+        golden_repo=infra["pg_golden_repo"],
+        chunk_repo=infra["pg_chunk_repo"],
+        task_repo=infra["pg_generation_task_repo"],
     )
     generation_task_usecase = GenerationTaskUseCase(
-        task_repo=pg_generation_task_repo,
+        task_repo=infra["pg_generation_task_repo"],
     )
     project_usecase = ProjectUseCase(
-        project_repo=pg_project_repo,
-        embed_model_repo=pg_embed_model_repo,
+        project_repo=infra["pg_project_repo"],
+        embed_model_repo=infra["pg_embed_model_repo"],
     )
     document_usecase = DocumentUseCase(
-        document_repo=pg_document_repo,
-        chunk_repo=pg_chunk_repo,
-        embedding_repo=pg_embedding_repo,
-        file_storage=file_storage,
-        golden_repo=pg_golden_repo,
+        document_repo=infra["pg_document_repo"],
+        chunk_repo=infra["pg_chunk_repo"],
+        embedding_repo=infra["pg_embedding_repo"],
+        file_storage=infra["file_storage"],
+        golden_repo=infra["pg_golden_repo"],
     )
-    embed_model_usecase = EmbedModelUseCase(embed_model_repo=pg_embed_model_repo, project_repo=pg_project_repo, model_scanner=model_scanner)
+    embed_model_usecase = EmbedModelUseCase(
+        embed_model_repo=infra["pg_embed_model_repo"],
+        project_repo=infra["pg_project_repo"],
+        model_scanner=infra["model_scanner"],
+    )
     profile_usecase = ProfileUseCase(
-        profile_repo=pg_profile_repo,
-        project_repo=pg_project_repo,
+        profile_repo=infra["pg_profile_repo"],
+        project_repo=infra["pg_project_repo"],
     )
     ask = AskUseCase(
-        retriever=retriever,
-        chunk_repo=pg_chunk_repo,
-        llm=llm,
+        retriever=infra["retriever"],
+        chunk_repo=infra["pg_chunk_repo"],
+        llm=infra["llm"],
     )
+    from rag.application.usecases.retrieve import RetrieveUseCase
     retrieve = RetrieveUseCase(
-        retriever=retriever,
-        chunk_repo=pg_chunk_repo,
+        retriever=infra["retriever"],
+        chunk_repo=infra["pg_chunk_repo"],
     )
     evaluate = EvaluateUseCase(
-        retriever=retriever,
-        golden_repo=pg_golden_repo,
-        project_repo=pg_project_repo,
+        retriever=infra["retriever"],
+        golden_repo=infra["pg_golden_repo"],
+        project_repo=infra["pg_project_repo"],
     )
 
+    return {
+        "upload_usecase": upload_usecase,
+        "process_document_usecase": process_document_usecase,
+        "batch_process_usecase": batch_process_usecase,
+        "golden_dataset_usecase": golden_dataset_usecase,
+        "generate_golden_usecase": generate_golden_usecase,
+        "generation_task_usecase": generation_task_usecase,
+        "scan_embed_models_usecase": scan_embed_models_usecase,
+        "project_usecase": project_usecase,
+        "document_usecase": document_usecase,
+        "embed_model_usecase": embed_model_usecase,
+        "profile_usecase": profile_usecase,
+        "ask": ask,
+        "retrieve": retrieve,
+        "evaluate": evaluate,
+    }
+
+
+def build_container(settings: Settings | None = None) -> Container:
+    global _container
+
+    print("[LOAD] 加载基础设施模块...", flush=True)
+    infra = _build_infra(settings)
+
+    print("[LOAD] 组装用例...", flush=True)
+    usecases = _build_usecases(infra)
+
     _container = Container(
-        upload_usecase=upload_usecase,
-        process_document_usecase=process_document_usecase,
-        batch_process_usecase=batch_process_usecase,
-        golden_dataset_usecase=golden_dataset_usecase,
-        generate_golden_usecase=generate_golden_usecase,
-        generation_task_usecase=generation_task_usecase,
-        scan_embed_models_usecase=scan_embed_models_usecase,
-        project_usecase=project_usecase,
-        document_usecase=document_usecase,
-        embed_model_usecase=embed_model_usecase,
-        profile_usecase=profile_usecase,
-        ask=ask,
-        retrieve=retrieve,
-        evaluate=evaluate,
+        **usecases,
         settings=settings,
-        model_scanner=model_scanner,
+        model_scanner=infra["model_scanner"],
         task_manager=TaskManager(),
     )
 

@@ -73,8 +73,7 @@ class GenerateGoldenUseCase:
         # 启动后台协程
         async def _run_and_cleanup():
             try:
-                async for _ in runner.run(task, project_id, chunks_by_doc, config):
-                    pass
+                await runner.run(task, project_id, chunks_by_doc, config)
             finally:
                 if task_manager is not None:
                     task_manager.remove(task.id)

@@ -95,8 +95,7 @@ class GenerationTaskUseCase:
 
         async def _retry_and_cleanup():
             try:
-                async for _ in runner.retry_failed():
-                    pass
+                await runner.retry_failed()
             finally:
                 task_manager.remove(task_id)
 

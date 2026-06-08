@@ -4,6 +4,7 @@ from .generate_config import GenerateConfig
 from .evaluation_metrics import EvaluationMetrics
 from .project_eval_summary import ProjectEvalSummary
 from .retrieval_result import RetrievalResult
+from .quality_scorer import QualityScorer
 
 __all__ = [
     "SplitterConfig",
@@ -12,4 +13,5 @@ __all__ = [
     "EvaluationMetrics",
     "ProjectEvalSummary",
     "RetrievalResult",
+    "QualityScorer",
 ]
