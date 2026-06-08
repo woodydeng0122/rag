@@ -1,4 +1,3 @@
-import asyncio
 import csv
 import io
 import json
@@ -18,8 +17,6 @@ from rag.api.schemas.golden_dataset import (
     BatchStatusUpdateRequest,
     BatchStatusUpdateResponse,
 )
-from rag.application.usecases.generation_task_runner import GenerationTaskRunner
-from rag.domain.entities.chunk import Chunk
 from rag.domain.entities.generation_task import TaskStatus
 from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.bootstrap.container import Container, get_container
@@ -124,58 +121,16 @@ async def generate_golden_dataset(
             file_char_threshold=req.config.file_char_threshold,
         )
 
-    # 加载目标 chunks
-    chunk_repo = container.generate_golden_usecase.chunk_repo
-    chunks_by_doc: dict[str, list[Chunk]] = {}
     try:
-        if req.chunk_ids:
-            all_chunks = await chunk_repo.list_by_project(project_id, limit=10000, offset=0)
-            selected = {c for c in all_chunks if c.id in set(req.chunk_ids)}
-            for c in selected:
-                chunks_by_doc.setdefault(c.source_file, []).append(c)
-        elif req.document_ids:
-            for doc_id in req.document_ids:
-                doc_chunks = await chunk_repo.list_by_document(doc_id)
-                chunks_by_doc[doc_id] = doc_chunks
-        else:
-            raise ValueError("必须提供 document_ids 或 chunk_ids")
+        task = await container.generate_golden_usecase.submit_with_runner(
+            project_id=project_id,
+            document_ids=req.document_ids or None,
+            chunk_ids=req.chunk_ids or None,
+            config=config,
+            task_manager=container.task_manager,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-    total_chunks = sum(len(v) for v in chunks_by_doc.values())
-    estimated_total = config.estimate_total(total_chunks)
-
-    # 创建任务
-    from rag.domain.entities.generation_task import GenerationTask
-    task = GenerationTask(
-        project_id=project_id,
-        status=TaskStatus.RUNNING,
-        total=estimated_total,
-        document_ids=req.document_ids or [],
-        chunk_ids=req.chunk_ids or [],
-        config=config,
-    )
-    task_repo = container.generate_golden_usecase.task_repo
-    task = await task_repo.save(task)
-
-    # 创建 Runner 并注册到 TaskManager
-    runner = GenerationTaskRunner(
-        llm=container.generate_golden_usecase.llm,
-        golden_repo=container.generate_golden_usecase.golden_repo,
-        chunk_repo=chunk_repo,
-        task_repo=task_repo,
-    )
-    container.task_manager.register(task.id, runner)
-
-    # 启动后台协程
-    async def _run_and_cleanup():
-        try:
-            async for _ in runner.run(task, project_id, chunks_by_doc, config):
-                pass
-        finally:
-            container.task_manager.remove(task.id)
-
-    asyncio.create_task(_run_and_cleanup())
 
     return GenerateGoldenResponse(task_id=task.id, status=task.status.value)
 
@@ -370,6 +325,8 @@ async def retry_failed_generation(
     container.task_manager.register(task_id, runner)
     runner.pause_event.set()
     runner.cancel_flag.clear()
+
+    import asyncio
 
     async def _retry_and_cleanup():
         try:

@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 
+from rag.application.task_manager import TaskManager
+from rag.application.usecases.generation_task_runner import GenerationTaskRunner
 from rag.domain.entities.chunk import Chunk
 from rag.domain.value_objects.generate_config import GenerateConfig
 from rag.domain.entities.generation_task import GenerationTask, TaskStatus
@@ -29,6 +31,81 @@ class GenerateGoldenUseCase:
         self.chunk_repo = chunk_repo
         self.task_repo = task_repo
 
+    async def submit_with_runner(
+        self,
+        project_id: str,
+        document_ids: list[str] | None = None,
+        chunk_ids: list[str] | None = None,
+        config: GenerateConfig | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> GenerationTask:
+        """创建生成任务，使用 GenerationTaskRunner 支持事件流，并注册到 TaskManager"""
+        if config is None:
+            config = GenerateConfig()
+
+        # 加载目标 chunks
+        chunks_by_doc = await self._load_chunks_by_doc(project_id, document_ids, chunk_ids)
+
+        total_chunks = sum(len(v) for v in chunks_by_doc.values())
+        estimated_total = config.estimate_total(total_chunks)
+
+        # 创建任务
+        task = GenerationTask(
+            project_id=project_id,
+            status=TaskStatus.RUNNING,
+            total=estimated_total,
+            document_ids=document_ids or [],
+            chunk_ids=chunk_ids or [],
+            config=config,
+        )
+        task = await self.task_repo.save(task)
+
+        # 创建 Runner
+        runner = GenerationTaskRunner(
+            llm=self.llm,
+            golden_repo=self.golden_repo,
+            chunk_repo=self.chunk_repo,
+            task_repo=self.task_repo,
+        )
+
+        # 注册到 TaskManager
+        if task_manager is not None:
+            task_manager.register(task.id, runner)
+
+        # 启动后台协程
+        async def _run_and_cleanup():
+            try:
+                async for _ in runner.run(task, project_id, chunks_by_doc, config):
+                    pass
+            finally:
+                if task_manager is not None:
+                    task_manager.remove(task.id)
+
+        asyncio.create_task(_run_and_cleanup())
+
+        return task
+
+    async def _load_chunks_by_doc(
+        self,
+        project_id: str,
+        document_ids: list[str] | None,
+        chunk_ids: list[str] | None,
+    ) -> dict[str, list[Chunk]]:
+        """按文档分组加载目标 chunks"""
+        chunks_by_doc: dict[str, list[Chunk]] = {}
+        if chunk_ids:
+            all_chunks = await self.chunk_repo.list_by_project(project_id, limit=10000, offset=0)
+            selected = {c for c in all_chunks if c.id in set(chunk_ids)}
+            for c in selected:
+                chunks_by_doc.setdefault(c.source_file, []).append(c)
+        elif document_ids:
+            for doc_id in document_ids:
+                doc_chunks = await self.chunk_repo.list_by_document(doc_id)
+                chunks_by_doc[doc_id] = doc_chunks
+        else:
+            raise ValueError("必须提供 document_ids 或 chunk_ids")
+        return chunks_by_doc
+
     async def execute(
         self,
         project_id: str,
@@ -36,24 +113,12 @@ class GenerateGoldenUseCase:
         chunk_ids: list[str] | None = None,
         config: GenerateConfig | None = None,
     ) -> GenerationTask:
-        """创建生成任务并启动后台协程"""
+        """创建生成任务并启动后台协程（无事件流，用于简单场景）"""
         if config is None:
             config = GenerateConfig()
 
         # 加载目标 chunks
-        chunks_by_doc: dict[str, list[Chunk]] = {}
-        if chunk_ids:
-            all_chunks = await self.chunk_repo.list_by_project(project_id, limit=10000, offset=0)
-            selected = {c for c in all_chunks if c.id in set(chunk_ids)}
-            for c in selected:
-                doc_id = c.source_file
-                chunks_by_doc.setdefault(doc_id, []).append(c)
-        elif document_ids:
-            for doc_id in document_ids:
-                doc_chunks = await self.chunk_repo.list_by_document(doc_id)
-                chunks_by_doc[doc_id] = doc_chunks
-        else:
-            raise ValueError("必须提供 document_ids 或 chunk_ids")
+        chunks_by_doc = await self._load_chunks_by_doc(project_id, document_ids, chunk_ids)
 
         total_chunks = sum(len(v) for v in chunks_by_doc.values())
         estimated_total = config.estimate_total(total_chunks)
@@ -304,6 +369,88 @@ class GenerateGoldenUseCase:
     async def get_task(self, task_id: str) -> GenerationTask | None:
         """查询单个生成任务"""
         return await self.task_repo.get_by_id(task_id)
+
+    async def pause_task(self, task_id: str, task_manager: TaskManager) -> None:
+        """暂停生成任务"""
+        task = await self.task_repo.get_by_id(task_id)
+        if task is None:
+            raise ValueError(f"生成任务 {task_id} 不存在")
+        if task.status != TaskStatus.RUNNING:
+            raise ValueError(f"无法暂停状态为 {task.status.value} 的任务")
+
+        runner = task_manager.get(task_id)
+        if runner:
+            runner.pause_event.clear()
+
+        task.pause()
+        await self.task_repo.update(task)
+
+    async def resume_task(self, task_id: str, task_manager: TaskManager) -> None:
+        """继续生成任务"""
+        task = await self.task_repo.get_by_id(task_id)
+        if task is None:
+            raise ValueError(f"生成任务 {task_id} 不存在")
+        if task.status != TaskStatus.PAUSED:
+            raise ValueError(f"无法继续状态为 {task.status.value} 的任务")
+
+        runner = task_manager.get(task_id)
+        if runner:
+            runner.pause_event.set()
+
+        task.resume()
+        await self.task_repo.update(task)
+
+    async def cancel_task(self, task_id: str, task_manager: TaskManager) -> None:
+        """取消生成任务"""
+        task = await self.task_repo.get_by_id(task_id)
+        if task is None:
+            raise ValueError(f"生成任务 {task_id} 不存在")
+        if task.status not in (TaskStatus.RUNNING, TaskStatus.PAUSED):
+            raise ValueError(f"无法取消状态为 {task.status.value} 的任务")
+
+        runner = task_manager.get(task_id)
+        if runner:
+            runner.cancel_flag.set()
+            if task.status == TaskStatus.PAUSED:
+                runner.pause_event.set()
+
+        task.cancel()
+        await self.task_repo.update(task)
+        task_manager.remove(task_id)
+
+    async def retry_failed_task(self, task_id: str, task_manager: TaskManager) -> int:
+        """重试失败项，返回重试数量"""
+        task = await self.task_repo.get_by_id(task_id)
+        if task is None:
+            raise ValueError(f"生成任务 {task_id} 不存在")
+        if task.status not in (TaskStatus.COMPLETED, TaskStatus.CANCELLED):
+            raise ValueError("只能重试已完成或已取消的任务")
+
+        runner = task_manager.get(task_id)
+        if runner is None or not runner.failed_items:
+            raise ValueError("没有失败项可重试")
+
+        retry_count = len(runner.failed_items)
+
+        # 恢复任务状态为 running
+        task.status = TaskStatus.RUNNING
+        await self.task_repo.update(task)
+
+        # 重新注册 Runner 并启动重试
+        task_manager.register(task_id, runner)
+        runner.pause_event.set()
+        runner.cancel_flag.clear()
+
+        async def _retry_and_cleanup():
+            try:
+                async for _ in runner.retry_failed():
+                    pass
+            finally:
+                task_manager.remove(task_id)
+
+        asyncio.create_task(_retry_and_cleanup())
+
+        return retry_count
 
     @staticmethod
     def _load_chunks_text(chunks: list[Chunk], chunk_ids: list[str]) -> str:
