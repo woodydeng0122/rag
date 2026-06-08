@@ -1,45 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from rag.api.schemas.project import CreateProjectRequest, UpdateProjectRequest, ProjectResponse, EvalSummaryResponse
-from rag.domain.entities.project import Project
-from rag.domain.entities.embed_model import EmbedModel
+from rag.api.presenters.project import ProjectPresenter
+from rag.api.schemas.project import CreateProjectRequest, UpdateProjectRequest
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
-async def _project_to_response(p: Project, container: Container) -> ProjectResponse:
+async def _project_to_response(p, container: Container):
     embed_model_name = ""
     if p.embed_model_id:
         embed_model = await container.embed_model_usecase.get(p.embed_model_id)
         if embed_model:
             embed_model_name = embed_model.name
 
-    eval_resp = None
-    if p.eval_summary is not None:
-        eval_resp = EvalSummaryResponse(
-            recall_at_10=p.eval_summary.recall_at_10,
-            mrr=p.eval_summary.mrr,
-            answerable=p.eval_summary.answerable,
-            total=p.eval_summary.total,
-            latency_avg_ms=p.eval_summary.latency_avg_ms,
-            evaluated_at=p.eval_summary.evaluated_at.isoformat() if p.eval_summary.evaluated_at else None,
-        )
-
-    return ProjectResponse(
-        id=p.id,
-        name=p.name,
-        description=p.description,
-        embed_model_id=p.embed_model_id,
-        embed_model_name=embed_model_name,
-        embed_dimension=p.embed_dimension,
-        created_at=p.created_at.isoformat() if p.created_at else "",
-        updated_at=p.updated_at.isoformat() if p.updated_at else "",
-        eval_summary=eval_resp,
-    )
+    return ProjectPresenter.to_response(p, embed_model_name=embed_model_name)
 
 
-@router.post("", response_model=ProjectResponse)
+@router.post("")
 async def create_project(
     req: CreateProjectRequest,
     container: Container = Depends(get_container),
@@ -55,7 +33,7 @@ async def create_project(
     return await _project_to_response(saved, container)
 
 
-@router.get("", response_model=list[ProjectResponse])
+@router.get("")
 async def list_projects(
     container: Container = Depends(get_container),
 ):
@@ -63,7 +41,7 @@ async def list_projects(
     return [await _project_to_response(p, container) for p in projects]
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get("/{project_id}")
 async def get_project(
     project_id: str,
     container: Container = Depends(get_container),
@@ -74,7 +52,7 @@ async def get_project(
     return await _project_to_response(project, container)
 
 
-@router.put("/{project_id}", response_model=ProjectResponse)
+@router.put("/{project_id}")
 async def update_project(
     project_id: str,
     req: UpdateProjectRequest,

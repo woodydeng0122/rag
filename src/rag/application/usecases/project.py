@@ -1,3 +1,4 @@
+from rag.application.results.project_result import ProjectResult
 from rag.domain.entities.project import Project
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
@@ -48,3 +49,25 @@ class ProjectUseCase:
         if project is None:
             raise ValueError(f"项目 {project_id} 不存在")
         return await self._project_repo.delete(project_id)
+
+    # ── 带 embed_model_name 的查询 ──────────────────────────
+
+    async def get_with_model_name(self, project_id: str) -> ProjectResult | None:
+        """查询项目并附带嵌入模型名称"""
+        project = await self._project_repo.get_by_id(project_id)
+        if project is None:
+            return None
+        return await self._to_result(project)
+
+    async def list_with_model_name(self) -> list[ProjectResult]:
+        """列出所有项目并附带嵌入模型名称"""
+        projects = await self._project_repo.list()
+        return [await self._to_result(p) for p in projects]
+
+    async def _to_result(self, project: Project) -> ProjectResult:
+        embed_model_name = ""
+        if project.embed_model_id:
+            embed_model = await self._embed_model_repo.get_by_id(project.embed_model_id)
+            if embed_model:
+                embed_model_name = embed_model.name
+        return ProjectResult(project=project, embed_model_name=embed_model_name)

@@ -7,16 +7,14 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 
+from rag.api.presenters.golden_dataset import GoldenDatasetPresenter
 from rag.api.schemas.golden_dataset import (
     CreateGoldenDatasetRequest,
     UpdateGoldenDatasetRequest,
-    GoldenDatasetResponse,
-    EvaluationMetricsResponse,
     ImportGoldenDatasetResponse,
     SkippedRecordResponse,
     GenerateGoldenRequest,
     GenerateGoldenResponse,
-    GenerationTaskResponse,
     BatchStatusUpdateRequest,
     BatchStatusUpdateResponse,
 )
@@ -33,57 +31,17 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["golden-datasets"]
 MAX_IMPORT_ROWS = 1000
 
 
-def _record_to_response(r) -> GoldenDatasetResponse:
-    evaluation = None
-    if r.evaluation:
-        evaluation = EvaluationMetricsResponse(
-            retrieved_chunk_ids=r.evaluation.retrieved_chunk_ids or [],
-            is_hit=r.evaluation.is_hit,
-            hit_rank=r.evaluation.hit_rank,
-            evaluated_at=r.evaluation.evaluated_at.isoformat() if r.evaluation.evaluated_at else None,
-        )
-    return GoldenDatasetResponse(
-        id=r.id,
-        project_id=r.project_id,
-        query=r.query,
-        ground_truth_chunks=r.ground_truth_chunks,
-        reference_answer=r.reference_answer or "",
-        status=r.status.value if hasattr(r.status, "value") else r.status,
-        evaluation=evaluation,
-        created_at=r.created_at.isoformat() if r.created_at else "",
-        metadata=r.metadata if r.metadata else {},
-    )
-
-
-def _task_to_response(t) -> GenerationTaskResponse:
-    return GenerationTaskResponse(
-        id=t.id,
-        project_id=t.project_id,
-        status=t.status.value if hasattr(t.status, "value") else t.status,
-        total=t.total,
-        completed=t.completed,
-        failed=t.failed,
-        document_ids=t.document_ids or [],
-        chunk_ids=t.chunk_ids or [],
-        config=t.config.to_dict() if t.config else {},
-        error_message=t.error_message or "",
-        created_at=t.created_at.isoformat() if t.created_at else "",
-        updated_at=t.updated_at.isoformat() if t.updated_at else None,
-        finished_at=t.finished_at.isoformat() if t.finished_at else None,
-    )
-
-
-@router.get("/golden-datasets", response_model=list[GoldenDatasetResponse])
+@router.get("/golden-datasets")
 async def list_golden_datasets(
     project_id: str,
     status: str | None = None,
     container: Container = Depends(get_container),
 ):
     records = await container.golden_dataset_usecase.list_by_project(project_id, status=status)
-    return [_record_to_response(r) for r in records]
+    return [GoldenDatasetPresenter.to_response(r) for r in records]
 
 
-@router.get("/documents/{document_id}/golden-datasets", response_model=list[GoldenDatasetResponse])
+@router.get("/documents/{document_id}/golden-datasets")
 async def list_golden_datasets_by_document(
     project_id: str,
     document_id: str,
@@ -91,10 +49,10 @@ async def list_golden_datasets_by_document(
 ):
     """按文档 ID 查询关联的黄金记录"""
     records = await container.golden_dataset_usecase.list_by_document(project_id, document_id)
-    return [_record_to_response(r) for r in records]
+    return [GoldenDatasetPresenter.to_response(r) for r in records]
 
 
-@router.post("/golden-datasets", response_model=GoldenDatasetResponse)
+@router.post("/golden-datasets")
 async def create_golden_dataset(
     project_id: str,
     req: CreateGoldenDatasetRequest,
@@ -106,10 +64,10 @@ async def create_golden_dataset(
         ground_truth_chunks=req.ground_truth_chunks,
         reference_answer=req.reference_answer,
     )
-    return _record_to_response(record)
+    return GoldenDatasetPresenter.to_response(record)
 
 
-@router.patch("/golden-datasets/{record_id}", response_model=GoldenDatasetResponse)
+@router.patch("/golden-datasets/{record_id}")
 async def update_golden_dataset(
     project_id: str,
     record_id: str,
@@ -130,7 +88,7 @@ async def update_golden_dataset(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return _record_to_response(record)
+    return GoldenDatasetPresenter.to_response(record)
 
 
 @router.delete("/golden-datasets/{record_id}")
@@ -222,16 +180,16 @@ async def generate_golden_dataset(
     return GenerateGoldenResponse(task_id=task.id, status=task.status.value)
 
 
-@router.get("/generation-tasks", response_model=list[GenerationTaskResponse])
+@router.get("/generation-tasks")
 async def list_generation_tasks(
     project_id: str,
     container: Container = Depends(get_container),
 ):
     tasks = await container.generate_golden_usecase.list_tasks(project_id)
-    return [_task_to_response(t) for t in tasks]
+    return [GoldenDatasetPresenter.to_task_response(t) for t in tasks]
 
 
-@router.get("/generation-tasks/{task_id}", response_model=GenerationTaskResponse)
+@router.get("/generation-tasks/{task_id}")
 async def get_generation_task(
     project_id: str,
     task_id: str,
@@ -240,7 +198,7 @@ async def get_generation_task(
     task = await container.generate_golden_usecase.get_task(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail="生成任务不存在")
-    return _task_to_response(task)
+    return GoldenDatasetPresenter.to_task_response(task)
 
 
 # ========== SSE 事件流 ==========

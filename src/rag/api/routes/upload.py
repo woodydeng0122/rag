@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 
-from rag.api.schemas.upload import UploadResponse
+from rag.api.presenters.document import DocumentPresenter
 from rag.bootstrap.container import Container, get_container
 from rag.domain.value_objects.splitter_config import SplitterConfig
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
 
 
-@router.post("/documents", response_model=UploadResponse)
+@router.post("/documents")
 async def upload_documents(
     project_id: str,
     file: UploadFile = File(...),
@@ -40,16 +40,4 @@ async def upload_documents(
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=str(e))
 
-    return UploadResponse(
-        documents=[
-            {
-                "id": d.id,
-                "filename": d.filename,
-                "file_type": d.file_type,
-                "file_size": d.file_size,
-                "status": d.status,
-            }
-            for d in documents
-        ],
-        count=len(documents),
-    )
+    return DocumentPresenter.to_upload_response(documents)
