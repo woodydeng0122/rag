@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -122,7 +123,7 @@ async def ask_stream(
                     data = json.dumps({"type": "error", "data": event.data}, ensure_ascii=False)
                     yield f"data: {data}\n\n"
         except Exception as e:
-            logger.exception("SSE 流式问答异常")
+            logger.error(f"SSE 流式问答异常 session_id={session_id} query={req.query}\n{traceback.format_exc()}")
             data = json.dumps({"type": "error", "data": str(e)}, ensure_ascii=False)
             yield f"data: {data}\n\n"
 

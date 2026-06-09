@@ -70,6 +70,8 @@ class DashScopeLLM(LLMPort):
             return
 
         async for chunk in completion:
+            if not chunk.choices:
+                continue
             content = chunk.choices[0].delta.content
             if content:
                 yield content
@@ -123,6 +125,8 @@ class DashScopeLLM(LLMPort):
         ttfb = None
         result = []
         for chunk in completion:
+            if not chunk.choices:
+                continue
             content = chunk.choices[0].delta.content
             if content:
                 if not ttfb:
@@ -138,6 +142,8 @@ class DashScopeLLM(LLMPort):
         ttfb = None
         result = []
         async for chunk in completion:
+            if not chunk.choices:
+                continue
             content = chunk.choices[0].delta.content
             if content:
                 if not ttfb:
