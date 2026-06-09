@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import AsyncGenerator
@@ -40,23 +41,7 @@ class DashScopeLLM(LLMPort):
 
     def generate_json(self, prompt: str, schema: dict | None = None) -> dict:
         """生成结构化 JSON 输出，内置解析和重试"""
-        enhanced_prompt = self._enhance_prompt(prompt, schema)
-
-        for attempt in range(_MAX_JSON_RETRIES + 1):
-            raw = self.generate(enhanced_prompt)
-            if not raw:
-                if attempt < _MAX_JSON_RETRIES:
-                    logger.warning("generate_json: LLM 返回空，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
-                    continue
-                raise ValueError("LLM 返回空内容，无法解析 JSON")
-
-            try:
-                return self._parse_json_output(raw)
-            except ValueError:
-                if attempt < _MAX_JSON_RETRIES:
-                    logger.warning("generate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
-
-        raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
+        return self._json_retry_loop(lambda: self.generate(self._enhance_prompt(prompt, schema)), "generate_json")
 
     async def agenerate(self, prompt: str) -> str:
         """异步生成文本，使用 AsyncOpenAI 不阻塞事件循环"""
@@ -91,11 +76,11 @@ class DashScopeLLM(LLMPort):
 
     async def agenerate_json(self, prompt: str, schema: dict | None = None) -> dict:
         """异步生成结构化 JSON 输出，内置解析和重试"""
-        enhanced_prompt = self._enhance_prompt(prompt, schema)
+        enhanced = self._enhance_prompt(prompt, schema)
 
         raw = ""
         for attempt in range(_MAX_JSON_RETRIES + 1):
-            raw = await self.agenerate(enhanced_prompt)
+            raw = await self.agenerate(enhanced)
             if not raw:
                 if attempt < _MAX_JSON_RETRIES:
                     logger.warning("agenerate_json: LLM 返回空，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
@@ -110,7 +95,26 @@ class DashScopeLLM(LLMPort):
 
         raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
 
-    # ── 私有方法：提取公共流式消费逻辑 ──
+    # ── 私有方法 ──
+
+    def _json_retry_loop(self, generate_fn, label: str) -> dict:
+        """同步 JSON 生成 + 重试循环"""
+        raw = ""
+        for attempt in range(_MAX_JSON_RETRIES + 1):
+            raw = generate_fn()
+            if not raw:
+                if attempt < _MAX_JSON_RETRIES:
+                    logger.warning("%s: LLM 返回空，重试 %d/%d", label, attempt + 1, _MAX_JSON_RETRIES)
+                    continue
+                raise ValueError("LLM 返回空内容，无法解析 JSON")
+
+            try:
+                return self._parse_json_output(raw)
+            except ValueError:
+                if attempt < _MAX_JSON_RETRIES:
+                    logger.warning("%s: JSON 解析失败，重试 %d/%d", label, attempt + 1, _MAX_JSON_RETRIES)
+
+        raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
 
     @staticmethod
     def _collect_stream(completion) -> str:
@@ -145,8 +149,6 @@ class DashScopeLLM(LLMPort):
     @staticmethod
     def _enhance_prompt(prompt: str, schema: dict | None) -> str:
         """增强 prompt，追加 JSON 输出要求"""
-        import json
-
         suffix = "\n\n输出要求：\n- 只输出合法 JSON，不要有其他内容\n- 不要用 markdown 代码块包裹"
         if schema:
             suffix += f"\n- 格式说明：{json.dumps(schema, ensure_ascii=False)}"

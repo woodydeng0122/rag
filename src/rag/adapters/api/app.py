@@ -12,6 +12,7 @@ from .routes.document import router as document_router
 from .routes.embed_model import router as embed_model_router
 from .routes.golden import router as golden_router
 from .routes.profile import router as profile_router
+from .routes.qa import router as qa_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
 from rag.bootstrap.startup import startup, shutdown
@@ -88,3 +89,4 @@ app.include_router(document_router)
 app.include_router(embed_model_router)
 app.include_router(golden_router)
 app.include_router(profile_router)
+app.include_router(qa_router)

@@ -2,6 +2,8 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+from rag.domain.value_objects.splitter_config import SplitterConfig
+
 
 class DocumentStatusEnum(str, Enum):
     """API 层文档状态枚举 — 与领域层解耦"""
@@ -21,6 +23,16 @@ class SplitterConfigSchema(BaseModel):
     chunk_overlap: int = 50
     min_chars: int = 200
     max_chars: int = 2000
+
+    @classmethod
+    def from_domain(cls, config: SplitterConfig) -> "SplitterConfigSchema":
+        return cls(
+            strategy=config.strategy,
+            chunk_size=config.chunk_size,
+            chunk_overlap=config.chunk_overlap,
+            min_chars=config.min_chars,
+            max_chars=config.max_chars,
+        )
 
 
 class DocumentResponse(BaseModel):

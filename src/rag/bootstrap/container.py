@@ -12,6 +12,7 @@ from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
 from rag.application.usecases.project import ProjectUseCase
 from rag.application.usecases.project_evaluation import ProjectEvaluationUseCase
+from rag.application.usecases.qa import QAUseCase
 from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
 from rag.application.usecases.upload import UploadUseCase
 from rag.bootstrap.settings import Settings
@@ -35,6 +36,7 @@ class Container:
     embed_model_usecase: EmbedModelUseCase
     profile_usecase: ProfileUseCase
     ask: AskUseCase
+    qa: QAUseCase
     retrieve: RetrieveUseCase
     settings: Settings
     # 基础设施
@@ -56,6 +58,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_golden_retrieval_repository import PgGoldenRetrievalRepository
     from rag.infra.repositories.pg_project_evaluation_repository import PgProjectEvaluationRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
+    from rag.infra.repositories.pg_qa_repository import PgQARepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.cosine_retriever import CosineRetriever
@@ -75,6 +78,7 @@ def _build_infra(settings: Settings):
     pg_golden_retrieval_repo = PgGoldenRetrievalRepository()
     pg_project_evaluation_repo = PgProjectEvaluationRepository()
     pg_profile_repo = PgProfileRepository()
+    pg_qa_repo = PgQARepository()
 
     # 基础设施适配器
     print("[INIT] 初始化基础设施适配器...", flush=True)
@@ -110,6 +114,7 @@ def _build_infra(settings: Settings):
         "pg_golden_retrieval_repo": pg_golden_retrieval_repo,
         "pg_project_evaluation_repo": pg_project_evaluation_repo,
         "pg_profile_repo": pg_profile_repo,
+        "pg_qa_repo": pg_qa_repo,
         "embedder_pool": embedder_pool,
         "model_scanner": model_scanner,
         "file_storage": file_storage,
@@ -180,6 +185,12 @@ def _build_usecases(infra: dict):
         chunk_repo=infra["pg_chunk_repo"],
         llm=infra["llm"],
     )
+    qa = QAUseCase(
+        retriever=infra["retriever"],
+        chunk_repo=infra["pg_chunk_repo"],
+        llm=infra["llm"],
+        qa_repo=infra["pg_qa_repo"],
+    )
     from rag.application.usecases.retrieve import RetrieveUseCase
     retrieve = RetrieveUseCase(
         retriever=infra["retriever"],
@@ -204,6 +215,7 @@ def _build_usecases(infra: dict):
         "embed_model_usecase": embed_model_usecase,
         "profile_usecase": profile_usecase,
         "ask": ask,
+        "qa": qa,
         "retrieve": retrieve,
     }
 
