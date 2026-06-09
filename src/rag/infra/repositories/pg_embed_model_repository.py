@@ -3,39 +3,36 @@ import json
 from rag.domain.entities.embed_model import EmbedModel, ModelStatus
 from rag.domain.value_objects.model_config import ModelConfig
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
-from rag.infra.database.connection import get_pool
+from rag.infra.repositories.base import BaseRepository, acquire_connection
 
 
-class PgEmbedModelRepository(EmbedModelRepositoryPort):
+class PgEmbedModelRepository(EmbedModelRepositoryPort, BaseRepository):
     """PostgreSQL 实现的嵌入模型仓储"""
 
-    async def save(self, model: EmbedModel) -> EmbedModel:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """INSERT INTO embed_model (name, dimension, description, status, metadata)
+    _UPSERT_SQL = """INSERT INTO embed_model (name, dimension, description, status, metadata)
                 VALUES ($1, $2, $3, $4, $5::jsonb)
                 ON CONFLICT (name) DO UPDATE SET
                     dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
-                RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
-                model.name, model.dimension, model.description, model.status.value,
-                json.dumps(model.config.to_dict(), ensure_ascii=False),
-            )
+                RETURNING id, name, dimension, description, status, metadata, created_at, updated_at"""
+
+    _SELECT_ALL = "SELECT id, name, dimension, description, status, metadata, created_at, updated_at FROM embed_model"
+
+    async def save(self, model: EmbedModel) -> EmbedModel:
+        row = await self._fetch_one(
+            self._UPSERT_SQL,
+            model.name, model.dimension, model.description, model.status.value,
+            json.dumps(model.config.to_dict(), ensure_ascii=False),
+        )
         return _row_to_model(row)
 
     async def save_batch(self, models: list[EmbedModel]) -> list[EmbedModel]:
         if not models:
             return []
-        pool = get_pool()
         results = []
-        async with pool.acquire() as conn:
+        async with acquire_connection() as conn:
             for m in models:
                 row = await conn.fetchrow(
-                    """INSERT INTO embed_model (name, dimension, description, status, metadata)
-                    VALUES ($1, $2, $3, $4, $5::jsonb)
-                    ON CONFLICT (name) DO UPDATE SET
-                        dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
-                    RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
+                    self._UPSERT_SQL,
                     m.name, m.dimension, m.description, m.status.value,
                     json.dumps(m.config.to_dict(), ensure_ascii=False),
                 )
@@ -43,63 +40,48 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort):
         return results
 
     async def get_all(self) -> list[EmbedModel]:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT id, name, dimension, description, status, metadata, created_at, updated_at FROM embed_model ORDER BY name"
-            )
+        rows = await self._fetch_all(
+            f"{self._SELECT_ALL} ORDER BY name"
+        )
         return [_row_to_model(r) for r in rows]
 
     async def get_by_id(self, model_id: str) -> EmbedModel | None:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT id, name, dimension, description, status, metadata, created_at, updated_at FROM embed_model WHERE id = $1",
-                model_id,
-            )
+        row = await self._fetch_one(
+            f"{self._SELECT_ALL} WHERE id = $1",
+            model_id,
+        )
         if row is None:
             return None
         return _row_to_model(row)
 
     async def get_by_name(self, name: str) -> EmbedModel | None:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT id, name, dimension, description, status, metadata, created_at, updated_at FROM embed_model WHERE name = $1",
-                name,
-            )
+        row = await self._fetch_one(
+            f"{self._SELECT_ALL} WHERE name = $1",
+            name,
+        )
         if row is None:
             return None
         return _row_to_model(row)
 
     async def update(self, model: EmbedModel) -> EmbedModel:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """UPDATE embed_model SET name = $1, description = $2, status = $3, updated_at = now()
-                WHERE id = $4
-                RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
-                model.name, model.description, model.status.value, model.id,
-            )
+        row = await self._fetch_one(
+            """UPDATE embed_model SET name = $1, description = $2, status = $3, updated_at = now()
+            WHERE id = $4
+            RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
+            model.name, model.description, model.status.value, model.id,
+        )
         if row is None:
             raise ValueError(f"嵌入模型 {model.id} 不存在")
         return _row_to_model(row)
 
     async def delete(self, model_id: str) -> bool:
-        pool = get_pool()
-        async with pool.acquire() as conn:
-            result = await conn.execute(
-                "DELETE FROM embed_model WHERE id = $1",
-                model_id,
-            )
-            return result == "DELETE 1"
+        return await self._delete_by_id("embed_model", model_id)
 
 
 def _row_to_model(row) -> EmbedModel:
     config = row["metadata"]
     if isinstance(config, str):
-        import json as _json
-        config = _json.loads(config)
+        config = json.loads(config)
     return EmbedModel.reconstruct(
         id=str(row["id"]),
         name=row["name"],

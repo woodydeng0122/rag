@@ -15,3 +15,8 @@ class ProjectEvaluationRepositoryPort(ABC):
     async def list_by_project(self, project_id: str) -> list[ProjectEvaluation]:
         """按项目查询评估历史，按 created_at 降序"""
         ...
+
+    @abstractmethod
+    async def delete(self, evaluation_id: str) -> bool:
+        """删除评估记录，返回是否成功"""
+        ...

@@ -106,6 +106,20 @@ async def list_evaluation_stats(
     return [_evaluation_to_response(r) for r in results]
 
 
+@router.delete("/{project_id}/evaluation-stats/{evaluation_id}")
+async def delete_evaluation_stats(
+    project_id: str,
+    evaluation_id: str,
+    container: Container = Depends(get_container),
+):
+    """删除评估记录"""
+    try:
+        await container.evaluation_usecase.delete_evaluation(evaluation_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"detail": "删除成功"}
+
+
 def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
     return EvaluationStatsResponse(
         id=evaluation.id,

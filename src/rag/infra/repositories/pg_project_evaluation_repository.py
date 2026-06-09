@@ -52,6 +52,16 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
         return [_row_to_evaluation(row) for row in rows]
 
 
+    async def delete(self, evaluation_id: str) -> bool:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM project_evaluation WHERE id = $1",
+                int(evaluation_id),
+            )
+        return result == "DELETE 1"
+
+
 def _row_to_evaluation(row) -> ProjectEvaluation:
     return ProjectEvaluation(
         id=str(row["id"]),

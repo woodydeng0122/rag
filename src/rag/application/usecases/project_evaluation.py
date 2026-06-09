@@ -129,3 +129,10 @@ class ProjectEvaluationUseCase:
     async def list_evaluations(self, project_id: str) -> list[ProjectEvaluation]:
         """查询评估历史"""
         return await self._evaluation_repo.list_by_project(project_id)
+
+    async def delete_evaluation(self, evaluation_id: str) -> bool:
+        """删除评估记录"""
+        deleted = await self._evaluation_repo.delete(evaluation_id)
+        if not deleted:
+            raise ValueError("评估记录不存在")
+        return True
