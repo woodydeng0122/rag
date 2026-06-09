@@ -16,7 +16,7 @@ class GoldenPresenter:
     """黄金记录领域实体 → API 响应转换"""
 
     @staticmethod
-    def to_response(r: GoldenRecord) -> GoldenResponse:
+    def to_response(r: GoldenRecord, has_retrieval: bool = False) -> GoldenResponse:
         return GoldenResponse(
             id=r.id,
             project_id=r.project_id,
@@ -26,4 +26,5 @@ class GoldenPresenter:
             status=_DOMAIN_TO_API_GOLDEN_STATUS[r.status],
             created_at=r.created_at.isoformat() if r.created_at else "",
             metadata=r.metadata if r.metadata else {},
+            has_retrieval=has_retrieval,
         )

@@ -1,0 +1,114 @@
+from rag.domain.entities.golden_retrieval import GoldenRetrieval
+from rag.domain.entities.golden_retrieval_item import GoldenRetrievalItem
+from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort
+from rag.infra.database.connection import get_pool
+
+
+class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort):
+    """PostgreSQL 实现的黄金记录检索结果仓储"""
+
+    async def save(self, retrieval: GoldenRetrieval, items: list[GoldenRetrievalItem]) -> GoldenRetrieval:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # 覆盖模式：先删旧结果
+                await conn.execute(
+                    "DELETE FROM golden_retrieval WHERE golden_id = $1",
+                    _to_uuid(retrieval.golden_id),
+                )
+                # 写入检索主记录
+                row = await conn.fetchrow(
+                    """INSERT INTO golden_retrieval (golden_id, max_k, latency_ms, embed_model_name)
+                    VALUES ($1, $2, $3, $4)
+                    RETURNING id, golden_id, max_k, latency_ms, embed_model_name, created_at""",
+                    _to_uuid(retrieval.golden_id),
+                    retrieval.max_k,
+                    retrieval.latency_ms,
+                    retrieval.embed_model_name,
+                )
+                # 写入检索明细
+                retrieval_id = str(row["id"])
+                for item in items:
+                    await conn.execute(
+                        """INSERT INTO golden_retrieval_item (retrieval_id, chunk_id, score, rank)
+                        VALUES ($1, $2, $3, $4)""",
+                        _to_uuid(retrieval_id),
+                        item.chunk_id,
+                        item.score,
+                        item.rank,
+                    )
+        return _row_to_retrieval(row)
+
+    async def get_by_golden_id(self, golden_id: str) -> tuple[GoldenRetrieval, list[GoldenRetrievalItem]] | None:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT id, golden_id, max_k, latency_ms, embed_model_name, created_at
+                FROM golden_retrieval WHERE golden_id = $1""",
+                _to_uuid(golden_id),
+            )
+            if row is None:
+                return None
+            item_rows = await conn.fetch(
+                """SELECT id, retrieval_id, chunk_id, score, rank
+                FROM golden_retrieval_item WHERE retrieval_id = $1
+                ORDER BY rank""",
+                row["id"],
+            )
+        retrieval = _row_to_retrieval(row)
+        items = [_row_to_item(r) for r in item_rows]
+        return retrieval, items
+
+    async def delete_by_golden_id(self, golden_id: str) -> bool:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM golden_retrieval WHERE golden_id = $1",
+                _to_uuid(golden_id),
+            )
+        return result == "DELETE 1"
+
+    async def exists_by_golden_id(self, golden_id: str) -> bool:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM golden_retrieval WHERE golden_id = $1",
+                _to_uuid(golden_id),
+            )
+        return row is not None
+
+    async def exists_by_golden_ids(self, golden_ids: list[str]) -> set[str]:
+        if not golden_ids:
+            return set()
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT golden_id FROM golden_retrieval WHERE golden_id = ANY($1::uuid[])",
+                golden_ids,
+            )
+        return {str(row["golden_id"]) for row in rows}
+
+
+def _to_uuid(value: str) -> str:
+    return value
+
+
+def _row_to_retrieval(row) -> GoldenRetrieval:
+    return GoldenRetrieval(
+        id=str(row["id"]),
+        golden_id=str(row["golden_id"]),
+        max_k=row["max_k"],
+        latency_ms=row["latency_ms"],
+        embed_model_name=row["embed_model_name"] or "",
+        created_at=row["created_at"],
+    )
+
+
+def _row_to_item(row) -> GoldenRetrievalItem:
+    return GoldenRetrievalItem(
+        id=str(row["id"]),
+        retrieval_id=str(row["retrieval_id"]),
+        chunk_id=row["chunk_id"],
+        score=float(row["score"]),
+        rank=int(row["rank"]),
+    )

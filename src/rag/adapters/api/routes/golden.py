@@ -13,6 +13,9 @@ from rag.adapters.api.schemas.golden import (
     SkippedRecordResponse,
     BatchStatusUpdateRequest,
     BatchStatusUpdateResponse,
+    CreateRetrievalRequest,
+    RetrievalItemResponse,
+    RetrievalResponse,
 )
 from rag.bootstrap.container import Container, get_container
 
@@ -30,7 +33,10 @@ async def list_goldens(
     container: Container = Depends(get_container),
 ):
     records = await container.golden_usecase.list_by_project(project_id, status=status)
-    return [GoldenPresenter.to_response(r) for r in records]
+    # 批量查询哪些记录有检索结果
+    record_ids = [r.id for r in records]
+    retrieval_ids = await container.golden_retrieve_usecase.has_retrieval_for_records(record_ids)
+    return [GoldenPresenter.to_response(r, has_retrieval=r.id in retrieval_ids) for r in records]
 
 
 @router.get("/documents/{document_id}/golden")
@@ -93,6 +99,37 @@ async def delete_golden(
     if not deleted:
         raise HTTPException(status_code=404, detail="黄金记录不存在")
     return {"detail": "删除成功"}
+
+
+@router.post("/golden/{record_id}/retrieval", response_model=RetrievalResponse)
+async def create_retrieval(
+    project_id: str,
+    record_id: str,
+    req: CreateRetrievalRequest,
+    container: Container = Depends(get_container),
+):
+    """触发检索 — 根据黄金记录的 query 执行语义检索，覆盖旧结果"""
+    try:
+        result = await container.golden_retrieve_usecase.execute(
+            record_id=record_id, max_k=req.max_k
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400 if "嵌入模型" in str(e) else 404, detail=str(e))
+    return _retrieval_result_to_response(result)
+
+
+@router.get("/golden/{record_id}/retrieval", response_model=RetrievalResponse)
+async def get_retrieval(
+    project_id: str,
+    record_id: str,
+    container: Container = Depends(get_container),
+):
+    """获取检索结果 — 含 chunk 内容和 GT 命中标记"""
+    try:
+        result = await container.golden_retrieve_usecase.get_retrieval(record_id=record_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return _retrieval_result_to_response(result)
 
 
 @router.post("/golden/batch-approve", response_model=BatchStatusUpdateResponse)
@@ -201,6 +238,30 @@ def _parse_jsonl(text: str) -> list[dict]:
                 break
             idx = next_nl + 1
     return records
+
+
+def _retrieval_result_to_response(result) -> RetrievalResponse:
+    """GoldenRetrievalResult → RetrievalResponse"""
+    return RetrievalResponse(
+        id=result.id,
+        golden_id=result.golden_id,
+        max_k=result.max_k,
+        latency_ms=result.latency_ms,
+        embed_model_name=result.embed_model_name,
+        created_at=result.created_at,
+        items=[
+            RetrievalItemResponse(
+                chunk_id=item.chunk_id,
+                score=item.score,
+                rank=item.rank,
+                content=item.content,
+                heading=item.heading,
+                source_file=item.source_file,
+                is_ground_truth=item.is_ground_truth,
+            )
+            for item in result.items
+        ],
+    )
 
 
 def _parse_csv(text: str) -> list[dict]:

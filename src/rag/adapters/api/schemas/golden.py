@@ -33,6 +33,31 @@ class GoldenResponse(BaseModel):
     status: GoldenStatusEnum = GoldenStatusEnum.APPROVED
     created_at: str = ""
     metadata: dict = Field(default_factory=dict)
+    has_retrieval: bool = False
+
+
+class CreateRetrievalRequest(BaseModel):
+    max_k: int = Field(default=10, ge=1, le=100, description="检索最大返回数量")
+
+
+class RetrievalItemResponse(BaseModel):
+    chunk_id: str
+    score: float
+    rank: int
+    content: str = ""
+    heading: str = ""
+    source_file: str = ""
+    is_ground_truth: bool = False
+
+
+class RetrievalResponse(BaseModel):
+    id: str
+    golden_id: str
+    max_k: int
+    latency_ms: int
+    embed_model_name: str = ""
+    created_at: str = ""
+    items: list[RetrievalItemResponse] = Field(default_factory=list)
 
 
 class SkippedRecordResponse(BaseModel):

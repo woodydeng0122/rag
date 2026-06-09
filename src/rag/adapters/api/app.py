@@ -88,11 +88,3 @@ app.include_router(document_router)
 app.include_router(embed_model_router)
 app.include_router(golden_router)
 app.include_router(profile_router)
-
-from argparse import ArgumentParser
-def register_args(p: ArgumentParser):
-    pass
-
-def handle(args, container):
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -8,21 +8,12 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 def main():
     from rag.adapters.cli.registry import register_command, COMMANDS
 
-    # ── 显式注册所有命令 ──────────────────────────────────
-    from rag.adapters.cli.migrate import register_args as migrate_args, handle as migrate_handle
-    register_command("migrate", help="执行数据库迁移", dependency="db", register_args=migrate_args, handler=migrate_handle)
-
-    from rag.adapters.cli.download import register_args as download_args, handle as download_handle
-    register_command("download-embedding", help="从 ModelScope 下载 embedding 模型", dependency="none", register_args=download_args, handler=download_handle)
-
-    from rag.adapters.cli.list_chunks import register_args as list_chunks_args, handle as list_chunks_handle
-    register_command("list-chunks", help="根据文档路径查询所有分块", dependency="db", register_args=list_chunks_args, handler=list_chunks_handle)
-
-    from rag.adapters.cli.ask import register_args as ask_args, handle as ask_handle
-    register_command("ask", help="提问", dependency="full_container", register_args=ask_args, handler=ask_handle)
-
-    from rag.adapters.cli.api import register_args as api_args, handle as api_handle
-    register_command("api", help="启动 API 服务", dependency="full_container", register_args=api_args, handler=api_handle)
+    # ── 延迟注册所有命令 — 仅在执行时才 import 模块 ──────────
+    register_command("migrate", help="执行数据库迁移", dependency="db", lazy_import="rag.adapters.cli.migrate")
+    register_command("download-embedding", help="从 ModelScope 下载 embedding 模型", dependency="none", lazy_import="rag.adapters.cli.download")
+    register_command("list-chunks", help="根据文档路径查询所有分块", dependency="db", lazy_import="rag.adapters.cli.list_chunks")
+    register_command("ask", help="提问", dependency="full_container", lazy_import="rag.adapters.cli.ask")
+    register_command("api", help="启动 API 服务", dependency="full_container", lazy_import="rag.adapters.cli.api")
 
     # ── 构建 argparse ─────────────────────────────────────
     import argparse
