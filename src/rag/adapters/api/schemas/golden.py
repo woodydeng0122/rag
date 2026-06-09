@@ -61,6 +61,8 @@ class RetrievalResponse(BaseModel):
     golden_id: str
     max_k: int
     latency_ms: int
+    embed_latency_ms: int = 0
+    search_latency_ms: int = 0
     embed_model_name: str = ""
     created_at: str = ""
     items: list[RetrievalItemResponse] = Field(default_factory=list)

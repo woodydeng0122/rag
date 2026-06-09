@@ -19,12 +19,13 @@ class BaseRetrieveUseCase:
 
     async def _retrieve_chunks(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievedChunk]:
         """检索并加载分块内容 — 共享逻辑"""
-        results = await self.retriever.retrieve(query, project_id=project_id, top_k=top_k)
-        chunks = await self.chunk_repo.list_by_project(project_id, limit=10000)
+        output = await self.retriever.retrieve(query, project_id=project_id, top_k=top_k)
+        chunk_ids = [r.chunk_id for r in output.results]
+        chunks = await self.chunk_repo.get_by_ids(chunk_ids)
         chunk_map = {c.id: c for c in chunks}
 
         retrieved = []
-        for r in results:
+        for r in output.results:
             chunk = chunk_map.get(r.chunk_id)
             if chunk:
                 retrieved.append(

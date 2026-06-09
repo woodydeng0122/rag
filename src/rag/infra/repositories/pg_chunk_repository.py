@@ -78,6 +78,19 @@ class PgChunkRepository(ChunkRepositoryPort):
                 )
         return [_row_to_chunk(row) for row in rows]
 
+    async def get_by_ids(self, chunk_ids: list[str]) -> list[Chunk]:
+        """按 ID 列表批量查询 chunk"""
+        if not chunk_ids:
+            return []
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT id, content, index, heading, source_file
+                   FROM chunk WHERE id = ANY($1::varchar[])""",
+                chunk_ids,
+            )
+        return [_row_to_chunk(row) for row in rows]
+
 
 def _to_uuid(value: str) -> str:
     return value

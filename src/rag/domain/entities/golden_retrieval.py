@@ -10,5 +10,7 @@ class GoldenRetrieval:
     max_k: int
     latency_ms: int
     embed_model_name: str
+    embed_latency_ms: int = 0
+    search_latency_ms: int = 0
     id: str = ""
     created_at: datetime | None = None

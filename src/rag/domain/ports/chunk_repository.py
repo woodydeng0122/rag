@@ -16,3 +16,8 @@ class ChunkRepositoryPort(ABC):
 
     @abstractmethod
     async def search_by_project(self, project_id: str, query: str, limit: int = 20, offset: int = 0) -> list[Chunk]: ...
+
+    @abstractmethod
+    async def get_by_ids(self, chunk_ids: list[str]) -> list[Chunk]:
+        """按 ID 列表批量查询 chunk"""
+        ...

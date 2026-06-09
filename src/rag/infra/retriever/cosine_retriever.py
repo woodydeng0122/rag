@@ -1,5 +1,8 @@
+import time
+
 import numpy as np
 from rag.domain.value_objects.retrieval_result import RetrievalResult
+from rag.domain.value_objects.retrieval_output import RetrievalOutput
 from rag.domain.ports.embedder_pool import EmbedderPoolPort
 from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
@@ -22,11 +25,11 @@ class CosineRetriever(RetrieverPort):
         self._embed_model_repo = embed_model_repo
         self._project_repo = project_repo
 
-    async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievalResult]:
+    async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> RetrievalOutput:
         # 从 PG 按项目加载嵌入
         embeddings = await self._embedding_repo.list_by_project(project_id)
         if not embeddings:
-            return []
+            return RetrievalOutput(results=[], embed_latency_ms=0, search_latency_ms=0)
 
         # 获取项目关联的嵌入模型
         embedder_model_name = ""
@@ -37,7 +40,7 @@ class CosineRetriever(RetrieverPort):
                 embedder_model_name = embed_model.name
 
         if not embedder_model_name:
-            return []
+            return RetrievalOutput(results=[], embed_latency_ms=0, search_latency_ms=0)
 
         # 获取对应的 embedder
         embedder = self._embedder_pool.get(embedder_model_name)
@@ -45,16 +48,26 @@ class CosineRetriever(RetrieverPort):
         # 构建嵌入矩阵
         embeddings_array = np.array([e.vector for e in embeddings])
 
-        # 查询嵌入
+        # 计时: 嵌入
+        embed_start = time.monotonic()
         query_vectors = embedder.embed(query)
         query_emb = np.array(query_vectors[0])
+        embed_latency_ms = int((time.monotonic() - embed_start) * 1000)
 
-        # 计算余弦相似度
+        # 计时: 向量检索
+        search_start = time.monotonic()
         scores = np.dot(embeddings_array, query_emb)
         sorted_indices = scores.argsort()
         best_indices = sorted_indices[-top_k:][::-1]
+        search_latency_ms = int((time.monotonic() - search_start) * 1000)
 
-        return [
+        results = [
             RetrievalResult(chunk_id=embeddings[i].chunk_id, score=float(scores[i]))
             for i in best_indices
         ]
+
+        return RetrievalOutput(
+            results=results,
+            embed_latency_ms=embed_latency_ms,
+            search_latency_ms=search_latency_ms,
+        )

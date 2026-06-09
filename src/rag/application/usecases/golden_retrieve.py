@@ -36,6 +36,8 @@ class GoldenRetrievalResult:
     embed_model_name: str
     created_at: str
     items: list[RetrievalItemWithChunk]
+    embed_latency_ms: int = 0
+    search_latency_ms: int = 0
 
 
 class GoldenRetrieveUseCase:
@@ -77,7 +79,7 @@ class GoldenRetrieveUseCase:
 
         # 执行检索并计时
         start = time.monotonic()
-        results = await self._retriever.retrieve(
+        output = await self._retriever.retrieve(
             query=record.query, project_id=record.project_id, top_k=max_k
         )
         latency_ms = int((time.monotonic() - start) * 1000)
@@ -90,7 +92,7 @@ class GoldenRetrieveUseCase:
                 score=r.score,
                 rank=i + 1,
             )
-            for i, r in enumerate(results)
+            for i, r in enumerate(output.results)
         ]
 
         # 持久化（覆盖模式）
@@ -99,6 +101,8 @@ class GoldenRetrieveUseCase:
             max_k=max_k,
             latency_ms=latency_ms,
             embed_model_name=embed_model_name,
+            embed_latency_ms=output.embed_latency_ms,
+            search_latency_ms=output.search_latency_ms,
         )
         saved = await self._golden_retrieval_repo.save(retrieval, items)
 
@@ -131,13 +135,11 @@ class GoldenRetrieveUseCase:
         project_id: str,
         chunk_ids: list[str],
     ) -> dict:
-        """批量加载 chunk 内容 — 封装仓库访问，避免在业务方法中直接操作内部仓库"""
+        """批量加载 chunk 内容 — 按 ID 精准查询"""
         if not chunk_ids:
             return {}
-        all_chunks = await self._chunk_repo.list_by_project(
-            project_id=project_id, limit=100000
-        )
-        return {c.id: c for c in all_chunks if c.id in chunk_ids}
+        chunks = await self._chunk_repo.get_by_ids(chunk_ids)
+        return {c.id: c for c in chunks}
 
     async def _build_result(
         self,
@@ -176,4 +178,6 @@ class GoldenRetrieveUseCase:
             embed_model_name=retrieval.embed_model_name,
             created_at=retrieval.created_at.isoformat() if retrieval.created_at else "",
             items=result_items,
+            embed_latency_ms=retrieval.embed_latency_ms,
+            search_latency_ms=retrieval.search_latency_ms,
         )

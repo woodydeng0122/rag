@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from rag.domain.value_objects.retrieval_result import RetrievalResult
+
+from rag.domain.value_objects.retrieval_output import RetrievalOutput
 
 
 class RetrieverPort(ABC):
     """检索器端口 — 根据查询检索相关分块的抽象"""
 
     @abstractmethod
-    async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> list[RetrievalResult]: ...
+    async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> RetrievalOutput: ...

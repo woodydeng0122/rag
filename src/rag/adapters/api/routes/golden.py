@@ -252,6 +252,8 @@ def _retrieval_result_to_response(result) -> RetrievalResponse:
         golden_id=result.golden_id,
         max_k=result.max_k,
         latency_ms=result.latency_ms,
+        embed_latency_ms=getattr(result, "embed_latency_ms", 0),
+        search_latency_ms=getattr(result, "search_latency_ms", 0),
         embed_model_name=result.embed_model_name,
         created_at=result.created_at,
         items=[

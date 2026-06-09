@@ -18,13 +18,15 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort):
                 )
                 # 写入检索主记录
                 row = await conn.fetchrow(
-                    """INSERT INTO golden_retrieval (golden_id, max_k, latency_ms, embed_model_name)
-                    VALUES ($1, $2, $3, $4)
-                    RETURNING id, golden_id, max_k, latency_ms, embed_model_name, created_at""",
+                    """INSERT INTO golden_retrieval (golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                    RETURNING id, golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms, created_at""",
                     _to_uuid(retrieval.golden_id),
                     retrieval.max_k,
                     retrieval.latency_ms,
                     retrieval.embed_model_name,
+                    retrieval.embed_latency_ms,
+                    retrieval.search_latency_ms,
                 )
                 # 写入检索明细
                 retrieval_id = str(row["id"])
@@ -43,7 +45,7 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT id, golden_id, max_k, latency_ms, embed_model_name, created_at
+                """SELECT id, golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms, created_at
                 FROM golden_retrieval WHERE golden_id = $1""",
                 _to_uuid(golden_id),
             )
@@ -124,6 +126,8 @@ def _row_to_retrieval(row) -> GoldenRetrieval:
         max_k=row["max_k"],
         latency_ms=row["latency_ms"],
         embed_model_name=row["embed_model_name"] or "",
+        embed_latency_ms=row.get("embed_latency_ms", 0) or 0,
+        search_latency_ms=row.get("search_latency_ms", 0) or 0,
         created_at=row["created_at"],
     )
 
