@@ -36,6 +36,17 @@ class PgProjectRepository(ProjectRepositoryPort):
             return None
         return _row_to_project(row)
 
+    async def get_by_name(self, name: str) -> Project | None:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"{self._SELECT} WHERE name = $1",
+                name,
+            )
+        if row is None:
+            return None
+        return _row_to_project(row)
+
     async def list(self) -> list[Project]:
         pool = get_pool()
         async with pool.acquire() as conn:

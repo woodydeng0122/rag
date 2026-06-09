@@ -12,8 +12,10 @@ def main():
     register_command("migrate", help="执行数据库迁移", dependency="db", lazy_import="rag.adapters.cli.migrate")
     register_command("download-embedding", help="从 ModelScope 下载 embedding 模型", dependency="none", lazy_import="rag.adapters.cli.download")
     register_command("list-chunks", help="根据文档路径查询所有分块", dependency="db", lazy_import="rag.adapters.cli.list_chunks")
+    register_command("list-projects", help="列出所有项目", dependency="db", lazy_import="rag.adapters.cli.list_projects")
     register_command("ask", help="提问", dependency="full_container", lazy_import="rag.adapters.cli.ask")
     register_command("api", help="启动 API 服务", dependency="full_container", lazy_import="rag.adapters.cli.api")
+    register_command("miss", help="筛选项目中检索未命中的黄金记录", dependency="db", lazy_import="rag.adapters.cli.miss")
 
     # ── 构建 argparse ─────────────────────────────────────
     import argparse

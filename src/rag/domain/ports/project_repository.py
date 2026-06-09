@@ -12,6 +12,9 @@ class ProjectRepositoryPort(ABC):
     async def get_by_id(self, project_id: str) -> Project | None: ...
 
     @abstractmethod
+    async def get_by_name(self, name: str) -> Project | None: ...
+
+    @abstractmethod
     async def list(self) -> list[Project]: ...
 
     @abstractmethod

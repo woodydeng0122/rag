@@ -40,7 +40,9 @@ class GoldenUseCase:
     async def get(self, record_id: str) -> GoldenRecord | None:
         return await self.golden_repo.get_by_id(record_id)
 
-    async def list_by_project(self, project_id: str, status: str | None = None) -> list[GoldenRecord]:
+    async def list_by_project(self, project_id: str, status: str | None = None, retrieval_status: str | None = None) -> list[GoldenRecord]:
+        if retrieval_status:
+            return await self.golden_repo.list_by_retrieval_status(project_id, retrieval_status)
         if status:
             golden_status = GoldenStatus(status)
             return await self.golden_repo.list_by_project_and_status(project_id, golden_status)

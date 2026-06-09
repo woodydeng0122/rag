@@ -77,11 +77,3 @@ class ImportGoldenResponse(BaseModel):
     success_count: int = 0
     skipped_count: int = 0
     skipped: list[SkippedRecordResponse] = Field(default_factory=list)
-
-
-class BatchStatusUpdateRequest(BaseModel):
-    record_ids: list[str] = Field(..., description="记录 ID 列表")
-
-
-class BatchStatusUpdateResponse(BaseModel):
-    updated_count: int

@@ -147,6 +147,53 @@ class PgGoldenRepository(GoldenRepositoryPort):
             )
         return {str(row["document_id"]): row["golden_count"] for row in rows}
 
+    async def list_by_retrieval_status(
+        self, project_id: str, retrieval_status: str
+    ) -> list[GoldenRecord]:
+        _SEL = """SELECT g.id, g.project_id, g.query, g.ground_truth_chunks, g.reference_answer,
+                         g.status, g.created_at, g.updated_at, g.metadata"""
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            if retrieval_status == "hit":
+                # 有检索结果且至少一个 chunk 命中 GT
+                rows = await conn.fetch(
+                    f"""{_SEL} FROM golden g
+                       JOIN golden_retrieval gr ON gr.golden_id = g.id
+                       JOIN golden_retrieval_item gri ON gri.retrieval_id = gr.id
+                       WHERE g.project_id = $1 AND gri.chunk_id = ANY(g.ground_truth_chunks)
+                       GROUP BY g.id
+                       ORDER BY g.created_at DESC""",
+                    _to_uuid(project_id),
+                )
+            elif retrieval_status == "miss":
+                # 有检索结果但没有 chunk 命中 GT
+                rows = await conn.fetch(
+                    f"""{_SEL} FROM golden g
+                       JOIN golden_retrieval gr ON gr.golden_id = g.id
+                       WHERE g.project_id = $1
+                       AND NOT EXISTS (
+                           SELECT 1 FROM golden_retrieval_item gri
+                           WHERE gri.retrieval_id = gr.id
+                           AND gri.chunk_id = ANY(g.ground_truth_chunks)
+                       )
+                       ORDER BY g.created_at DESC""",
+                    _to_uuid(project_id),
+                )
+            elif retrieval_status == "unretrieved":
+                # 没有检索结果
+                rows = await conn.fetch(
+                    f"""{_SEL} FROM golden g
+                       WHERE g.project_id = $1
+                       AND NOT EXISTS (
+                           SELECT 1 FROM golden_retrieval gr WHERE gr.golden_id = g.id
+                       )
+                       ORDER BY g.created_at DESC""",
+                    _to_uuid(project_id),
+                )
+            else:
+                rows = []
+        return [_row_to_record(row) for row in rows]
+
     async def list_by_document(self, project_id: str, document_id: str) -> list[GoldenRecord]:
         """按文档 ID 查询关联的黄金记录
 

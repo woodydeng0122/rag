@@ -11,8 +11,6 @@ from rag.adapters.api.schemas.golden import (
     UpdateGoldenRequest,
     ImportGoldenResponse,
     SkippedRecordResponse,
-    BatchStatusUpdateRequest,
-    BatchStatusUpdateResponse,
     CreateRetrievalRequest,
     RetrievalItemResponse,
     RetrievalResponse,
@@ -30,9 +28,10 @@ MAX_IMPORT_ROWS = 1000
 async def list_goldens(
     project_id: str,
     status: str | None = None,
+    retrieval_status: str | None = None,
     container: Container = Depends(get_container),
 ):
-    records = await container.golden_usecase.list_by_project(project_id, status=status)
+    records = await container.golden_usecase.list_by_project(project_id, status=status, retrieval_status=retrieval_status)
     # 批量查询检索命中摘要
     record_ids = [r.id for r in records]
     summaries = await container.golden_retrieve_usecase.get_retrieval_summaries(record_ids)
@@ -135,26 +134,6 @@ async def get_retrieval(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return _retrieval_result_to_response(result)
-
-
-@router.post("/golden/batch-approve", response_model=BatchStatusUpdateResponse)
-async def batch_approve(
-    project_id: str,
-    req: BatchStatusUpdateRequest,
-    container: Container = Depends(get_container),
-):
-    count = await container.golden_usecase.batch_approve(req.record_ids)
-    return BatchStatusUpdateResponse(updated_count=count)
-
-
-@router.post("/golden/batch-reject", response_model=BatchStatusUpdateResponse)
-async def batch_reject(
-    project_id: str,
-    req: BatchStatusUpdateRequest,
-    container: Container = Depends(get_container),
-):
-    count = await container.golden_usecase.batch_reject(req.record_ids)
-    return BatchStatusUpdateResponse(updated_count=count)
 
 
 @router.post("/golden/import", response_model=ImportGoldenResponse)

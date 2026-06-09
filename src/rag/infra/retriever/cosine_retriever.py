@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import numpy as np
@@ -50,11 +51,11 @@ class CosineRetriever(RetrieverPort):
 
         # 计时: 嵌入
         embed_start = time.monotonic()
-        query_vectors = embedder.embed(query)
+        query_vectors = await asyncio.to_thread(embedder.embed, query)
         query_emb = np.array(query_vectors[0])
         embed_latency_ms = int((time.monotonic() - embed_start) * 1000)
 
-        # 计时: 向量检索
+        # 计时: 检索（含 DB 加载 + 向量计算）
         search_start = time.monotonic()
         scores = np.dot(embeddings_array, query_emb)
         sorted_indices = scores.argsort()

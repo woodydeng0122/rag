@@ -1,0 +1,123 @@
+---
+name: "retrieval-miss-analysis"
+description: "Analyzes retrieval miss reasons from golden dataset. Invoke when user wants to diagnose why retrieval missed, categorize miss types, or improve RAG recall."
+---
+
+# Retrieval Miss Analysis
+
+分析黄金数据集中检索未命中条目的根因，归类到标准 miss 类型，给出改进建议。
+
+## 触发条件
+
+- 用户要求分析检索未命中原因
+- 用户提到 "miss 分析"、"未命中诊断"、"retrieval miss"、"召回率低"
+- 用户想了解为什么某个查询检索不到期望的分块
+
+## 执行步骤
+
+### 1. 确定项目名
+
+如果用户已指定项目名，直接使用。
+
+如果用户未指定项目名，调用 CLI 获取项目列表供用户选择：
+
+```bash
+source .venv/bin/activate && python -m rag list-projects --format json
+```
+
+解析 JSON 输出中的 `projects` 数组，提取每个项目的 `name` 字段，使用 AskUserQuestion 工具让用户选择项目。
+
+### 2. 调用 CLI 获取未命中数据
+
+```bash
+source .venv/bin/activate && python -m rag miss <项目名> --format json
+```
+
+### 3. 逐条分析 miss 原因
+
+对每条未命中记录，根据以下信息进行分类：
+
+**输入数据**：
+- `query`: 用户查询
+- `ground_truth_chunks`: 期望命中的分块（含内容、标题、源文件）
+- `retrieved_chunks`: 实际检索到的分块（含内容、标题、源文件、分数、排名）
+- `reference_answer`: 参考答案
+
+### 4. Miss 分类体系
+
+| 类型 | 英文 | 判定依据 | 典型特征 |
+|------|------|----------|----------|
+| **语义不匹配** | `semantic_mismatch` | 查询与 GT 分块的语义距离大，embedding 无法捕捉关联 | 查询用口语/比喻，GT 用术语；跨语言查询；同义不同词 |
+| **分块边界问题** | `chunk_boundary_issue` | GT 分块在关键信息处被截断，或关键信息跨越多个分块 | GT 分块内容不完整；关键信息分散在相邻分块中 |
+| **上下文污染** | `context_pollution` | 检索到的分块与查询部分相关但不是正确答案，挤占了 GT 的排名 | retrieved_chunks 中有同主题但不同子话题的分块；score 差距很小 |
+| **幻觉干扰** | `hallucination` | 检索到的分块包含与查询表面匹配但实质无关的内容 | retrieved_chunks 的标题/关键词匹配但内容不相关；score 虚高 |
+| **嵌入模型局限** | `embedding_limitation` | 嵌入模型本身无法区分细粒度差异 | 同一文档的多个分块语义高度相似；模型维度不足 |
+| **查询歧义** | `query_ambiguity` | 查询本身模糊，多个合理解读导致 GT 不唯一 | 查询短且缺乏上下文；GT 分块与 retrieved 分块都合理 |
+| **GT 标注错误** | `ground_truth_error` | GT 分块本身不是最佳答案，或标注有误 | GT 分块内容与参考答案不一致；存在更好的分块未被标注 |
+| **其他** | `other` | 不属于以上任何标准类型 | 必须在 `detail` 字段中给出自定义描述 |
+
+### 5. 分析判定规则
+
+对每条 miss，按以下顺序判断：
+
+1. **检查 GT 质量**：GT 分块内容是否完整、是否与参考答案一致 → 不一致则归为 `ground_truth_error`
+2. **检查分块边界**：GT 分块内容是否被截断、关键信息是否跨分块 → 是则归为 `chunk_boundary_issue`
+3. **检查查询歧义**：查询是否短且模糊、是否存在多个合理解读 → 是则归为 `query_ambiguity`
+4. **检查检索结果**：retrieved_chunks 是否与查询部分相关但子话题不同 → 是则归为 `context_pollution`
+5. **检查语义距离**：查询与 GT 分块的语义是否需要推理/同义转换才能关联 → 是则归为 `semantic_mismatch`
+6. **检查表面匹配**：retrieved_chunks 是否通过关键词/标题匹配但内容不相关 → 是则归为 `hallucination`
+7. **检查嵌入模型**：GT 分块与 retrieved 分块语义高度相似但模型无法区分 → 是则归为 `embedding_limitation`
+8. **兜底**：以上均不匹配 → 归为 `other`，必须在分析中详细描述具体原因
+
+一条 miss 可以同时归为多个类型（复合原因），此时标注主因和辅因。
+
+**重要**：`other` 不是偷懒的垃圾桶。只有经过上述 7 步逐一排除后仍无法归类的 miss 才使用 `other`，且必须给出清晰的原因描述。如果 `other` 占比超过 20%，应重新审视分类体系是否需要扩展新类型。
+
+### 6. 输出格式
+
+```
+## 检索未命中分析报告
+
+项目: <项目名>
+未命中总数: N
+
+---
+
+### [1] <query 摘要>
+
+- **ID**: <golden_id>
+- **查询**: <完整 query>
+- **主因**: <miss_type>
+- **辅因**: <miss_type> (如有)
+- **分析**: <具体分析，说明为什么归为该类型>
+- **改进建议**: <针对该类型的改进措施>
+- **详情**: <仅当类型为 other 时必填，描述具体原因>
+
+---
+
+### 汇总统计
+
+| 类型 | 数量 | 占比 |
+|------|------|------|
+| semantic_mismatch | N | XX% |
+| chunk_boundary_issue | N | XX% |
+| ... | ... | ... |
+
+### 优先改进建议
+
+1. <针对最高频 miss 类型的改进建议>
+2. <针对次高频 miss 类型的改进建议>
+```
+
+### 7. 各类型改进建议参考
+
+| 类型 | 改进方向 |
+|------|----------|
+| `semantic_mismatch` | 优化 query 改写；增加同义词扩展；换用更强的 embedding 模型；添加 hybrid search |
+| `chunk_boundary_issue` | 调整分块策略（增大 chunk_size、调整 overlap）；使用语义分块；添加上下文窗口 |
+| `context_pollution` | 增加 reranker 过滤；提高检索 top-k 后再精排；添加 metadata 过滤 |
+| `hallucination` | 添加关键词匹配权重；使用 BM25 + vector hybrid search；增加 reranker |
+| `embedding_limitation` | 升级 embedding 模型维度；使用领域微调模型；添加 sparse retrieval 补充 |
+| `query_ambiguity` | 添加 query 扩展/改写；增加对话上下文；要求用户补充信息 |
+| `ground_truth_error` | 修正 GT 标注；重新审核黄金数据集质量 |
+| `other` | 根据具体原因针对性改进；如果 other 占比 >20% 建议扩展分类体系 |

@@ -34,6 +34,10 @@
 - **WHEN** 用户向同一项目上传多个文件和 zip
 - **THEN** 所有文档的 project_id 指向该项目，项目下可见所有文档
 
+#### Scenario: 评估统计按钮
+- **WHEN** 项目卡片渲染
+- **THEN** actions 栏显示 BarChartOutlined 图标按钮，点击触发评估统计 Drawer
+
 ### Requirement: Project entity with evaluation fields
 Project 实体 SHALL 新增评测汇总字段：eval_recall_at_10、eval_mrr、eval_answerable、eval_total、eval_latency_avg_ms、evaluated_at。
 

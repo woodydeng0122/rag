@@ -39,4 +39,9 @@ class GoldenRepositoryPort(ABC):
     async def count_by_document_ids(self, document_ids: list[str]) -> dict[str, int]: ...
 
     @abstractmethod
+    async def list_by_retrieval_status(
+        self, project_id: str, retrieval_status: str
+    ) -> list[GoldenRecord]: ...
+
+    @abstractmethod
     async def list_by_document(self, project_id: str, document_id: str) -> list[GoldenRecord]: ...
