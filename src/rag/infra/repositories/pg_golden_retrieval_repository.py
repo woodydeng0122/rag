@@ -114,6 +114,37 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort):
             for row in rows
         }
 
+    async def list_by_project_with_items(self, project_id: str) -> list[tuple[GoldenRetrieval, list[GoldenRetrievalItem]]]:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            retrieval_rows = await conn.fetch(
+                """SELECT gr.id, gr.golden_id, gr.max_k, gr.latency_ms,
+                          gr.embed_model_name, gr.embed_latency_ms, gr.search_latency_ms, gr.created_at
+                   FROM golden_retrieval gr
+                   JOIN golden g ON g.id = gr.golden_id
+                   WHERE g.project_id = $1""",
+                project_id,
+            )
+            if not retrieval_rows:
+                return []
+            retrieval_ids = [row["id"] for row in retrieval_rows]
+            item_rows = await conn.fetch(
+                """SELECT id, retrieval_id, chunk_id, score, rank
+                   FROM golden_retrieval_item
+                   WHERE retrieval_id = ANY($1::uuid[])
+                   ORDER BY rank""",
+                retrieval_ids,
+            )
+        # 按 retrieval_id 分组
+        items_map: dict[str, list] = {}
+        for ir in item_rows:
+            rid = str(ir["retrieval_id"])
+            items_map.setdefault(rid, []).append(_row_to_item(ir))
+        return [
+            (_row_to_retrieval(row), items_map.get(str(row["id"]), []))
+            for row in retrieval_rows
+        ]
+
 
 def _to_uuid(value: str) -> str:
     return value

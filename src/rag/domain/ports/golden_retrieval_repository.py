@@ -44,3 +44,8 @@ class GoldenRetrievalRepositoryPort(ABC):
     async def get_retrieval_summaries(self, golden_ids: list[str]) -> dict[str, RetrievalSummary]:
         """批量获取检索命中摘要 — hit_count 为 GT 命中数，gt_total 为 GT 总数"""
         ...
+
+    @abstractmethod
+    async def list_by_project_with_items(self, project_id: str) -> list[tuple[GoldenRetrieval, list[GoldenRetrievalItem]]]:
+        """按项目批量加载所有检索结果及其明细 — 用于评估统计"""
+        ...

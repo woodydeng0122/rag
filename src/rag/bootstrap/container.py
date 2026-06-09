@@ -11,6 +11,7 @@ from rag.application.usecases.golden_retrieve import GoldenRetrieveUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
 from rag.application.usecases.project import ProjectUseCase
+from rag.application.usecases.project_evaluation import ProjectEvaluationUseCase
 from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
 from rag.application.usecases.upload import UploadUseCase
 from rag.bootstrap.settings import Settings
@@ -27,6 +28,7 @@ class Container:
     batch_process_usecase: BatchProcessDocumentUseCase
     golden_usecase: GoldenUseCase
     golden_retrieve_usecase: GoldenRetrieveUseCase
+    evaluation_usecase: ProjectEvaluationUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
     project_usecase: ProjectUseCase
     document_usecase: DocumentUseCase
@@ -52,6 +54,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
     from rag.infra.repositories.pg_golden_repository import PgGoldenRepository
     from rag.infra.repositories.pg_golden_retrieval_repository import PgGoldenRetrievalRepository
+    from rag.infra.repositories.pg_project_evaluation_repository import PgProjectEvaluationRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
@@ -70,6 +73,7 @@ def _build_infra(settings: Settings):
     pg_embed_model_repo = PgEmbedModelRepository()
     pg_golden_repo = PgGoldenRepository()
     pg_golden_retrieval_repo = PgGoldenRetrievalRepository()
+    pg_project_evaluation_repo = PgProjectEvaluationRepository()
     pg_profile_repo = PgProfileRepository()
 
     # 基础设施适配器
@@ -104,6 +108,7 @@ def _build_infra(settings: Settings):
         "pg_embed_model_repo": pg_embed_model_repo,
         "pg_golden_repo": pg_golden_repo,
         "pg_golden_retrieval_repo": pg_golden_retrieval_repo,
+        "pg_project_evaluation_repo": pg_project_evaluation_repo,
         "pg_profile_repo": pg_profile_repo,
         "embedder_pool": embedder_pool,
         "model_scanner": model_scanner,
@@ -180,6 +185,11 @@ def _build_usecases(infra: dict):
         retriever=infra["retriever"],
         chunk_repo=infra["pg_chunk_repo"],
     )
+    evaluation_usecase = ProjectEvaluationUseCase(
+        golden_repo=infra["pg_golden_repo"],
+        golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
+        evaluation_repo=infra["pg_project_evaluation_repo"],
+    )
 
     return {
         "upload_usecase": upload_usecase,
@@ -187,6 +197,7 @@ def _build_usecases(infra: dict):
         "batch_process_usecase": batch_process_usecase,
         "golden_usecase": golden_usecase,
         "golden_retrieve_usecase": golden_retrieve_usecase,
+        "evaluation_usecase": evaluation_usecase,
         "scan_embed_models_usecase": scan_embed_models_usecase,
         "project_usecase": project_usecase,
         "document_usecase": document_usecase,

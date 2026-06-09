@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from rag.adapters.api.presenters.project import ProjectPresenter
-from rag.adapters.api.schemas.project import CreateProjectRequest, UpdateProjectRequest
+from rag.adapters.api.schemas.project import (
+    CreateProjectRequest,
+    EvaluationStatsRequest,
+    EvaluationStatsResponse,
+    UpdateProjectRequest,
+)
 from rag.bootstrap.container import Container, get_container
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -73,3 +78,49 @@ async def delete_project(
     if not deleted:
         raise HTTPException(status_code=500, detail="删除失败")
     return {"detail": "删除成功"}
+
+
+@router.post("/{project_id}/evaluation-stats", response_model=EvaluationStatsResponse)
+async def create_evaluation_stats(
+    project_id: str,
+    req: EvaluationStatsRequest,
+    container: Container = Depends(get_container),
+):
+    """触发项目评估统计 — 基于已有检索结果计算 recall@{top_k}、MRR 等指标"""
+    try:
+        result = await container.evaluation_usecase.execute(
+            project_id=project_id, top_k=req.top_k
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return _evaluation_to_response(result)
+
+
+@router.get("/{project_id}/evaluation-stats", response_model=list[EvaluationStatsResponse])
+async def list_evaluation_stats(
+    project_id: str,
+    container: Container = Depends(get_container),
+):
+    """查询项目评估历史"""
+    results = await container.evaluation_usecase.list_evaluations(project_id)
+    return [_evaluation_to_response(r) for r in results]
+
+
+def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
+    return EvaluationStatsResponse(
+        id=evaluation.id,
+        project_id=evaluation.project_id,
+        top_k=evaluation.top_k,
+        golden_total=evaluation.golden_total,
+        golden_retrieved=evaluation.golden_retrieved,
+        recall_at_k=evaluation.recall_at_k,
+        mrr=evaluation.mrr,
+        hit_rate=evaluation.hit_rate,
+        full_hit_count=evaluation.full_hit_count,
+        zero_hit_count=evaluation.zero_hit_count,
+        avg_latency_ms=evaluation.avg_latency_ms,
+        avg_embed_latency_ms=evaluation.avg_embed_latency_ms,
+        avg_search_latency_ms=evaluation.avg_search_latency_ms,
+        embed_model_name=evaluation.embed_model_name,
+        created_at=evaluation.created_at.isoformat() if evaluation.created_at else "",
+    )

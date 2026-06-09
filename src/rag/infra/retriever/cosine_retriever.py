@@ -1,5 +1,4 @@
 import asyncio
-import time
 
 import numpy as np
 from rag.domain.value_objects.retrieval_result import RetrievalResult
@@ -9,6 +8,7 @@ from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.retriever import RetrieverPort
+from rag.shared.timer import measure
 
 
 class CosineRetriever(RetrieverPort):
@@ -49,18 +49,16 @@ class CosineRetriever(RetrieverPort):
         # 构建嵌入矩阵
         embeddings_array = np.array([e.vector for e in embeddings])
 
-        # 计时: 嵌入
-        embed_start = time.monotonic()
-        query_vectors = await asyncio.to_thread(embedder.embed, query)
-        query_emb = np.array(query_vectors[0])
-        embed_latency_ms = int((time.monotonic() - embed_start) * 1000)
+        timings: dict[str, int] = {}
 
-        # 计时: 检索（含 DB 加载 + 向量计算）
-        search_start = time.monotonic()
-        scores = np.dot(embeddings_array, query_emb)
-        sorted_indices = scores.argsort()
-        best_indices = sorted_indices[-top_k:][::-1]
-        search_latency_ms = int((time.monotonic() - search_start) * 1000)
+        with measure(timings, "embed"):
+            query_vectors = await asyncio.to_thread(embedder.embed, query)
+            query_emb = np.array(query_vectors[0])
+
+        with measure(timings, "search"):
+            scores = np.dot(embeddings_array, query_emb)
+            sorted_indices = scores.argsort()
+            best_indices = sorted_indices[-top_k:][::-1]
 
         results = [
             RetrievalResult(chunk_id=embeddings[i].chunk_id, score=float(scores[i]))
@@ -69,6 +67,6 @@ class CosineRetriever(RetrieverPort):
 
         return RetrievalOutput(
             results=results,
-            embed_latency_ms=embed_latency_ms,
-            search_latency_ms=search_latency_ms,
+            embed_latency_ms=timings.get("embed", 0),
+            search_latency_ms=timings.get("search", 0),
         )
