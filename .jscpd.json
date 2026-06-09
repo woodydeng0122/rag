@@ -1,7 +1,7 @@
 {
-  "threshold": 5,
+  "threshold": 10,
   "reporters": ["html", "console", "markdown"],
-  "path": ["src", "rag-web/src"],
+  "path": ["src", "rag-web/src", ".jscpd-extracted"],
   "ignore": [
     "**/.venv/**",
     "**/node_modules/**",
@@ -10,7 +10,7 @@
     "**/*.min.js",
     "**/components.d.ts"
   ],
-  "minLines": 5,
-  "minTokens": 50,
-  "format": ["python", "typescript", "javascript", "vue"]
+  "minLines": 3,
+  "minTokens": 25,
+  "format": ["python", "typescript", "javascript", "vue", "css"]
 }

@@ -14,8 +14,11 @@ golden
 report
 
 # Model files
-models/
+models
 *.bin
 *.safetensors
 *.onnx
 .env
+
+# jscpd extracted
+.jscpd-extracted/

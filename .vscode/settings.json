@@ -10,5 +10,6 @@
         "**/.venv": true,
         "CLAUDE.md": true,
         "src/rag.egg-info": true,
+        ".jscpd-extracted": true,
     }
 }
