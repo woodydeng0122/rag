@@ -1,7 +1,15 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from rag.domain.entities.golden_retrieval import GoldenRetrieval
 from rag.domain.entities.golden_retrieval_item import GoldenRetrievalItem
+
+
+@dataclass
+class RetrievalSummary:
+    """检索命中摘要"""
+    hit_count: int
+    gt_total: int
 
 
 class GoldenRetrievalRepositoryPort(ABC):
@@ -30,4 +38,9 @@ class GoldenRetrievalRepositoryPort(ABC):
     @abstractmethod
     async def exists_by_golden_ids(self, golden_ids: list[str]) -> set[str]:
         """批量判断哪些 golden_id 存在检索结果，返回有结果的 ID 集合"""
+        ...
+
+    @abstractmethod
+    async def get_retrieval_summaries(self, golden_ids: list[str]) -> dict[str, RetrievalSummary]:
+        """批量获取检索命中摘要 — hit_count 为 GT 命中数，gt_total 为 GT 总数"""
         ...

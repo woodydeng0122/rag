@@ -33,10 +33,15 @@ async def list_goldens(
     container: Container = Depends(get_container),
 ):
     records = await container.golden_usecase.list_by_project(project_id, status=status)
-    # 批量查询哪些记录有检索结果
+    # 批量查询检索命中摘要
     record_ids = [r.id for r in records]
-    retrieval_ids = await container.golden_retrieve_usecase.has_retrieval_for_records(record_ids)
-    return [GoldenPresenter.to_response(r, has_retrieval=r.id in retrieval_ids) for r in records]
+    summaries = await container.golden_retrieve_usecase.get_retrieval_summaries(record_ids)
+    return [GoldenPresenter.to_response(
+        r,
+        has_retrieval=r.id in summaries,
+        retrieval_hit_count=summaries[r.id].hit_count if r.id in summaries else None,
+        retrieval_gt_total=summaries[r.id].gt_total if r.id in summaries else None,
+    ) for r in records]
 
 
 @router.get("/documents/{document_id}/golden")

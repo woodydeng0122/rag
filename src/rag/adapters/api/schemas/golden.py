@@ -24,6 +24,11 @@ class UpdateGoldenRequest(BaseModel):
     status: GoldenStatusEnum | None = Field(None, description="状态")
 
 
+class RetrievalSummaryResponse(BaseModel):
+    hit_count: int = 0
+    gt_total: int = 0
+
+
 class GoldenResponse(BaseModel):
     id: str
     project_id: str
@@ -34,6 +39,7 @@ class GoldenResponse(BaseModel):
     created_at: str = ""
     metadata: dict = Field(default_factory=dict)
     has_retrieval: bool = False
+    retrieval_summary: RetrievalSummaryResponse | None = None
 
 
 class CreateRetrievalRequest(BaseModel):

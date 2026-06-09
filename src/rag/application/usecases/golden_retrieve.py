@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from rag.domain.ports.retriever import RetrieverPort
 from rag.domain.ports.golden_repository import GoldenRepositoryPort
-from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort
+from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort, RetrievalSummary
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
@@ -121,6 +121,10 @@ class GoldenRetrieveUseCase:
     async def has_retrieval_for_records(self, golden_ids: list[str]) -> set[str]:
         """批量查询哪些黄金记录有检索结果"""
         return await self._golden_retrieval_repo.exists_by_golden_ids(golden_ids)
+
+    async def get_retrieval_summaries(self, golden_ids: list[str]) -> dict[str, RetrievalSummary]:
+        """批量获取检索命中摘要"""
+        return await self._golden_retrieval_repo.get_retrieval_summaries(golden_ids)
 
     async def _load_chunk_map(
         self,

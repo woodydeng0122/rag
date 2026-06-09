@@ -1,6 +1,6 @@
 from rag.domain.entities.golden_retrieval import GoldenRetrieval
 from rag.domain.entities.golden_retrieval_item import GoldenRetrievalItem
-from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort
+from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort, RetrievalSummary
 from rag.infra.database.connection import get_pool
 
 
@@ -87,6 +87,30 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort):
                 golden_ids,
             )
         return {str(row["golden_id"]) for row in rows}
+
+    async def get_retrieval_summaries(self, golden_ids: list[str]) -> dict[str, RetrievalSummary]:
+        if not golden_ids:
+            return {}
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT gr.golden_id,
+                          COUNT(ri.chunk_id) FILTER (WHERE ri.chunk_id = ANY(g.ground_truth_chunks)) AS hit_count,
+                          COALESCE(array_length(g.ground_truth_chunks, 1), 0) AS gt_total
+                   FROM golden_retrieval gr
+                   JOIN golden g ON g.id = gr.golden_id
+                   LEFT JOIN golden_retrieval_item ri ON ri.retrieval_id = gr.id
+                   WHERE gr.golden_id = ANY($1::uuid[])
+                   GROUP BY gr.golden_id, g.ground_truth_chunks""",
+                golden_ids,
+            )
+        return {
+            str(row["golden_id"]): RetrievalSummary(
+                hit_count=row["hit_count"],
+                gt_total=row["gt_total"],
+            )
+            for row in rows
+        }
 
 
 def _to_uuid(value: str) -> str:
