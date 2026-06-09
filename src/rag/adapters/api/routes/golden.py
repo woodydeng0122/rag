@@ -243,6 +243,7 @@ def _retrieval_result_to_response(result) -> RetrievalResponse:
                 content=item.content,
                 heading=item.heading,
                 source_file=item.source_file,
+                file_type=item.file_type,
                 is_ground_truth=item.is_ground_truth,
             )
             for item in result.items

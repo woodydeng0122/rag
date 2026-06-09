@@ -93,8 +93,8 @@ class DocumentUseCase:
     async def get_embedding(self, chunk_id: str) -> Embedding | None:
         return await self._embedding_repo.get_by_chunk_id(chunk_id)
 
-    async def get_source_content(self, document_id: str) -> str:
-        """读取文档源文件内容（仅支持文本类型）"""
+    async def _get_text_document(self, document_id: str) -> Document:
+        """获取文档并校验：存在性 + 文本类型 + 源文件存在"""
         doc = await self._document_repo.get_by_id(document_id)
         if doc is None:
             raise ValueError(f"文档 {document_id} 不存在")
@@ -102,17 +102,16 @@ class DocumentUseCase:
             raise ValueError(f"{doc.file_type} 文件不支持源文件预览")
         if not self._file_storage.exists(doc.storage_key):
             raise FileNotFoundError(f"源文件不存在: {doc.storage_key}")
+        return doc
+
+    async def get_source_content(self, document_id: str) -> str:
+        """读取文档源文件内容（仅支持文本类型）"""
+        doc = await self._get_text_document(document_id)
         return self._file_storage.read_text(doc.storage_key)
 
     async def get_source_content_with_doc(self, document_id: str) -> SourceContentWithDoc:
         """读取文档源文件内容，附带文档信息"""
-        doc = await self._document_repo.get_by_id(document_id)
-        if doc is None:
-            raise ValueError(f"文档 {document_id} 不存在")
-        if not doc.is_text_file:
-            raise ValueError(f"{doc.file_type} 文件不支持源文件预览")
-        if not self._file_storage.exists(doc.storage_key):
-            raise FileNotFoundError(f"源文件不存在: {doc.storage_key}")
+        doc = await self._get_text_document(document_id)
         content = self._file_storage.read_text(doc.storage_key)
         return SourceContentWithDoc(
             content=content,

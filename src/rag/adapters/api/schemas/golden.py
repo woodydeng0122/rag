@@ -53,6 +53,7 @@ class RetrievalItemResponse(BaseModel):
     content: str = ""
     heading: str = ""
     source_file: str = ""
+    file_type: str = ""
     is_ground_truth: bool = False
 
 

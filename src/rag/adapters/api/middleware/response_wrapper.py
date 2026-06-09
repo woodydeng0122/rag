@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 
+from rag.adapters.api.middleware.request_event import abuild_request_event
 from rag.adapters.api.schemas.response import SUCCESS_CODE
 from rag.shared.logger import logger
 
@@ -47,29 +48,7 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
         # ── 构建日志输入 ──
         event = {}
         if should_log:
-            event = {
-                "request_id": request_id,
-                "method": request.method,
-                "path": path,
-            }
-            if request.path_params:
-                event["params"] = dict(request.path_params)
-            query = str(request.query_params)
-            if query:
-                event["query"] = query
-
-            # 读取请求体
-            if request.method in ("POST", "PUT", "PATCH"):
-                try:
-                    raw_body = await request.body()
-                    if raw_body:
-                        content_type = request.headers.get("content-type", "")
-                        if "application/json" in content_type:
-                            event["request_body"] = json.loads(raw_body)
-                        elif "multipart/form-data" not in content_type:
-                            event["request_body"] = raw_body.decode("utf-8", errors="replace")[:500]
-                except Exception:
-                    pass
+            event = await abuild_request_event(request, request_id)
 
         # ── 调用路由 ──
         response = None

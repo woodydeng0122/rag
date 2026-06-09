@@ -55,14 +55,29 @@ class SectionHeadingSplitter(SplitterPort):
             if len(sec["text"]) <= max_chars:
                 result.append(sec)
                 continue
-            sub_sections = self._split_by_heading(sec["text"], "### ")
-            if len(sub_sections) > 1:
-                result.extend(sub_sections)
+            result.extend(self._split_long_section(sec, max_chars))
+        return result
+
+    def _split_long_section(self, section: dict, max_chars: int) -> list[dict]:
+        """对超长分块尝试多种策略拆分：子标题 → 代码块保护 → 段落拆分"""
+        sub_sections = self._split_by_heading(section["text"], "### ")
+        if len(sub_sections) > 1:
+            return sub_sections
+        if re.search(r"```[\s\S]*?```", section["text"]):
+            return self._split_preserving_code(section, max_chars)
+        return self._split_by_paragraphs(section, max_chars)
+
+    def _protect_code_blocks(self, sections: list[dict], max_chars: int = 2000) -> list[dict]:
+        result = []
+        for sec in sections:
+            if len(sec["text"]) <= max_chars:
+                result.append(sec)
                 continue
-            if re.search(r"```[\s\S]*?```", sec["text"]):
-                result.extend(self._split_preserving_code(sec, max_chars))
-            else:
+            code_blocks = re.findall(r"```[\s\S]*?```", sec["text"])
+            if not code_blocks:
                 result.extend(self._split_by_paragraphs(sec, max_chars))
+                continue
+            result.extend(self._split_preserving_code(sec, max_chars))
         return result
 
     @staticmethod

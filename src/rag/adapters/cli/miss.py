@@ -12,19 +12,12 @@ def register_args(p: ArgumentParser):
 
 async def handle(args, settings):
     """筛选指定项目中检索结果未命中的黄金记录条目，含分块内容"""
-    from rag.infra.database.connection import init_pool, close_pool, get_pool
+    from rag.infra.database.connection import db_connection, get_pool
 
     project_name = args.project
     output_format = args.format
 
-    await init_pool(
-        host=settings.db_host,
-        port=settings.db_port,
-        database=settings.db_name,
-        user=settings.db_user,
-        password=settings.db_password,
-    )
-    try:
+    async with db_connection(settings):
         pool = get_pool()
         async with pool.acquire() as conn:
             # 查找项目
@@ -136,5 +129,3 @@ async def handle(args, settings):
                     print(f"        {rc['content'][:200]}{'...' if len(rc['content']) > 200 else ''}")
                 print(f"    参考答案: {m['reference_answer'] or '(无)'}")
                 print(f"    检索参数: max_k={m['max_k']}, latency={m['latency_ms']}ms, model={m['embed_model_name']}")
-    finally:
-        await close_pool()

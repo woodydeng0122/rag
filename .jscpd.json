@@ -1,12 +1,14 @@
 {
   "threshold": 5,
   "reporters": ["html", "console", "markdown"],
+  "path": ["src", "rag-web/src"],
   "ignore": [
     "**/.venv/**",
     "**/node_modules/**",
     "**/dist/**",
     "**/__pycache__/**",
-    "**/*.min.js"
+    "**/*.min.js",
+    "**/components.d.ts"
   ],
   "minLines": 5,
   "minTokens": 50,

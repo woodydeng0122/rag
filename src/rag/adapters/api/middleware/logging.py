@@ -8,6 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response, StreamingResponse
 
+from rag.adapters.api.middleware.request_event import abuild_request_event
 from rag.shared.logger import logger
 
 
@@ -34,36 +35,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         request_id = str(uuid.uuid4())[:8]
 
         # ── 构建输入 ──
-        event = {
-            "request_id": request_id,
-            "method": request.method,
-            "path": path,
-        }
-
-        if request.path_params:
-            event["params"] = dict(request.path_params)
-
-        query = str(request.query_params)
-        if query:
-            event["query"] = query
-
-        # 读取请求体（仅 JSON 请求）
-        request_body = None
-        if request.method in ("POST", "PUT", "PATCH"):
-            try:
-                raw_body = await request.body()
-                if raw_body:
-                    content_type = request.headers.get("content-type", "")
-                    if "application/json" in content_type:
-                        request_body = json.loads(raw_body)
-                    elif "multipart/form-data" not in content_type:
-                        # 非 multipart 且非 JSON，尝试当文本
-                        request_body = raw_body.decode("utf-8", errors="replace")[:500]
-            except Exception:
-                pass
-
-        if request_body is not None:
-            event["request_body"] = request_body
+        event = await abuild_request_event(request, request_id)
 
         # ── 调用 ──
         response = None

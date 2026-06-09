@@ -40,3 +40,22 @@ async def close_pool() -> None:
     if _pool is not None:
         await _pool.close()
         _pool = None
+
+
+class db_connection:
+    """CLI 脚本数据库连接上下文管理器，自动初始化和关闭连接池"""
+
+    def __init__(self, settings):
+        self._settings = settings
+
+    async def __aenter__(self) -> asyncpg.Pool:
+        return await init_pool(
+            host=self._settings.db_host,
+            port=self._settings.db_port,
+            database=self._settings.db_name,
+            user=self._settings.db_user,
+            password=self._settings.db_password,
+        )
+
+    async def __aexit__(self, *exc):
+        await close_pool()

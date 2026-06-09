@@ -11,18 +11,11 @@ def register_args(p: ArgumentParser):
 
 async def handle(args, settings):
     """列出所有项目"""
-    from rag.infra.database.connection import init_pool, close_pool, get_pool
+    from rag.infra.database.connection import db_connection, get_pool
 
     output_format = args.format
 
-    await init_pool(
-        host=settings.db_host,
-        port=settings.db_port,
-        database=settings.db_name,
-        user=settings.db_user,
-        password=settings.db_password,
-    )
-    try:
+    async with db_connection(settings):
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
@@ -64,5 +57,3 @@ async def handle(args, settings):
                 print(f"    描述: {p['description'] or '(无)'}")
                 print(f"    嵌入模型: {p['embed_model_name'] or '(未设置)'} (dim={p['embed_dimension']})")
                 print()
-    finally:
-        await close_pool()

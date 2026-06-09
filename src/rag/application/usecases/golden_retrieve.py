@@ -22,6 +22,7 @@ class RetrievalItemWithChunk:
     content: str
     heading: str
     source_file: str
+    file_type: str
     is_ground_truth: bool
 
 
@@ -135,11 +136,11 @@ class GoldenRetrieveUseCase:
         project_id: str,
         chunk_ids: list[str],
     ) -> dict:
-        """批量加载 chunk 内容 — 按 ID 精准查询"""
+        """批量加载 chunk 内容 — 按 ID 精准查询，附带 file_type"""
         if not chunk_ids:
             return {}
-        chunks = await self._chunk_repo.get_by_ids(chunk_ids)
-        return {c.id: c for c in chunks}
+        results = await self._chunk_repo.get_by_ids_with_file_type(chunk_ids)
+        return {c.id: (c, file_type) for c, file_type in results}
 
     async def _build_result(
         self,
@@ -157,7 +158,9 @@ class GoldenRetrieveUseCase:
 
         result_items = []
         for item in items:
-            chunk = chunk_map.get(item.chunk_id)
+            entry = chunk_map.get(item.chunk_id)
+            chunk = entry[0] if entry else None
+            file_type = entry[1] if entry else ""
             result_items.append(
                 RetrievalItemWithChunk(
                     chunk_id=item.chunk_id,
@@ -166,6 +169,7 @@ class GoldenRetrieveUseCase:
                     content=chunk.content if chunk else "",
                     heading=chunk.heading if chunk else "",
                     source_file=chunk.source_file if chunk else "",
+                    file_type=file_type,
                     is_ground_truth=item.chunk_id in gt_set,
                 )
             )

@@ -36,17 +36,7 @@ class DashScopeLLM(LLMPort):
             logger.warning("DashScope 免费额度已用完。")
             return ""
 
-        start = time.perf_counter()
-        ttfb = None
-        result = []
-        for chunk in completion:
-            content = chunk.choices[0].delta.content
-            if content:
-                if not ttfb:
-                    ttfb = (time.perf_counter() - start) * 1000
-                    logger.info("TTFB: %.2fms", ttfb)
-                result.append(content)
-        return "".join(result)
+        return self._collect_stream(completion)
 
     def generate_json(self, prompt: str, schema: dict | None = None) -> dict:
         """生成结构化 JSON 输出，内置解析和重试"""
@@ -80,17 +70,7 @@ class DashScopeLLM(LLMPort):
             logger.warning("DashScope 免费额度已用完。")
             return ""
 
-        start = time.perf_counter()
-        ttfb = None
-        result = []
-        async for chunk in completion:
-            content = chunk.choices[0].delta.content
-            if content:
-                if not ttfb:
-                    ttfb = (time.perf_counter() - start) * 1000
-                    logger.info("TTFB: %.2fms", ttfb)
-                result.append(content)
-        return "".join(result)
+        return await self._collect_async_stream(completion)
 
     async def astream(self, prompt: str) -> AsyncGenerator[str, None]:
         """异步流式生成文本，逐 token yield"""
@@ -129,6 +109,38 @@ class DashScopeLLM(LLMPort):
                     logger.warning("agenerate_json: JSON 解析失败，重试 %d/%d", attempt + 1, _MAX_JSON_RETRIES)
 
         raise ValueError(f"重试 {_MAX_JSON_RETRIES} 次后仍无法解析 JSON，原始输出: {raw[:200]}")
+
+    # ── 私有方法：提取公共流式消费逻辑 ──
+
+    @staticmethod
+    def _collect_stream(completion) -> str:
+        """消费同步流式响应，记录 TTFB 并拼接结果"""
+        start = time.perf_counter()
+        ttfb = None
+        result = []
+        for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                if not ttfb:
+                    ttfb = (time.perf_counter() - start) * 1000
+                    logger.info("TTFB: %.2fms", ttfb)
+                result.append(content)
+        return "".join(result)
+
+    @staticmethod
+    async def _collect_async_stream(completion) -> str:
+        """消费异步流式响应，记录 TTFB 并拼接结果"""
+        start = time.perf_counter()
+        ttfb = None
+        result = []
+        async for chunk in completion:
+            content = chunk.choices[0].delta.content
+            if content:
+                if not ttfb:
+                    ttfb = (time.perf_counter() - start) * 1000
+                    logger.info("TTFB: %.2fms", ttfb)
+                result.append(content)
+        return "".join(result)
 
     @staticmethod
     def _enhance_prompt(prompt: str, schema: dict | None) -> str:
