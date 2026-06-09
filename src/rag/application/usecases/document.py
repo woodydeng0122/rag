@@ -78,6 +78,18 @@ class DocumentUseCase:
     async def search_chunks_by_project(self, project_id: str, query: str, limit: int = 20, offset: int = 0) -> list[Chunk]:
         return await self._chunk_repo.search_by_project(project_id, query, limit, offset)
 
+    async def get_chunks_by_ids(self, chunk_ids: list[str]) -> list[Chunk]:
+        """按 ID 列表批量查询 chunk"""
+        if not chunk_ids:
+            return []
+        return await self._chunk_repo.get_by_ids(chunk_ids)
+
+    async def get_chunks_by_ids_with_file_type(self, chunk_ids: list[str]) -> list[tuple[Chunk, str]]:
+        """按 ID 列表批量查询 chunk，同时返回所属文档的 file_type"""
+        if not chunk_ids:
+            return []
+        return await self._chunk_repo.get_by_ids_with_file_type(chunk_ids)
+
     async def get_embedding(self, chunk_id: str) -> Embedding | None:
         return await self._embedding_repo.get_by_chunk_id(chunk_id)
 

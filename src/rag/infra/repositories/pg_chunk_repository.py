@@ -91,6 +91,22 @@ class PgChunkRepository(ChunkRepositoryPort):
             )
         return [_row_to_chunk(row) for row in rows]
 
+    async def get_by_ids_with_file_type(self, chunk_ids: list[str]) -> list[tuple[Chunk, str]]:
+        """按 ID 列表批量查询 chunk，同时返回所属文档的 file_type"""
+        if not chunk_ids:
+            return []
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT c.id, c.content, c.index, c.heading, c.source_file,
+                          d.file_type AS document_file_type
+                   FROM chunk c
+                   JOIN document d ON c.document_id = d.id
+                   WHERE c.id = ANY($1::varchar[])""",
+                chunk_ids,
+            )
+        return [(_row_to_chunk(row), row["document_file_type"]) for row in rows]
+
 
 def _to_uuid(value: str) -> str:
     return value

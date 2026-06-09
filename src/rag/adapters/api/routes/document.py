@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from rag.adapters.api.presenters.document import DocumentPresenter
 from rag.adapters.api.presenters.golden import GoldenPresenter
-from rag.adapters.api.schemas.document import BatchProcessRequest
+from rag.adapters.api.schemas.document import BatchProcessRequest, ChunkListResponse, ChunkResponse
 from rag.bootstrap.container import Container, get_container
 from rag.shared.logger import logger
 
@@ -110,6 +110,31 @@ async def search_chunks_by_project(
     else:
         chunks = await container.document_usecase.list_chunks_by_project(project_id, limit, offset)
     return DocumentPresenter.to_chunk_list_response(chunks, truncate=True)
+
+
+@router.get("/projects/{project_id}/chunks/batch")
+async def get_chunks_batch(
+    project_id: str,
+    ids: str = "",
+    container: Container = Depends(get_container),
+):
+    """按 ID 列表批量查询分块内容（含 file_type）"""
+    if not ids:
+        return ChunkListResponse(document_id="", total=0, chunks=[])
+    chunk_ids = [cid.strip() for cid in ids.split(",") if cid.strip()]
+    results = await container.document_usecase.get_chunks_by_ids_with_file_type(chunk_ids)
+    chunk_responses = [
+        ChunkResponse(
+            id=c.id,
+            index=c.index,
+            heading=c.heading,
+            content=c.content,
+            source_file=c.source_file,
+            file_type=file_type,
+        )
+        for c, file_type in results
+    ]
+    return ChunkListResponse(document_id="", total=len(chunk_responses), chunks=chunk_responses)
 
 
 @router.get("/projects/{project_id}/chunks/{chunk_id}/golden-records")

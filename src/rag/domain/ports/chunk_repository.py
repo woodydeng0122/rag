@@ -21,3 +21,8 @@ class ChunkRepositoryPort(ABC):
     async def get_by_ids(self, chunk_ids: list[str]) -> list[Chunk]:
         """按 ID 列表批量查询 chunk"""
         ...
+
+    @abstractmethod
+    async def get_by_ids_with_file_type(self, chunk_ids: list[str]) -> list[tuple[Chunk, str]]:
+        """按 ID 列表批量查询 chunk，同时返回所属文档的 file_type"""
+        ...

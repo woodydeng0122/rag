@@ -74,11 +74,19 @@
 - **THEN** Drawer 内展示评估结果：recall@{top_k}、MRR、命中率、完全命中/零命中、延迟分布
 
 ### Requirement: Evaluation history list page
-前端 SHALL 新增评估历史列表页，展示各次评估指标对比和趋势。
+前端 SHALL 新增评估历史独立页面（侧边栏导航入口），展示各次评估指标对比和趋势。
+
+#### Scenario: 侧边栏导航入口
+- **WHEN** 侧边栏渲染
+- **THEN** 显示"评估历史"菜单项，点击跳转到当前激活项目的评估历史页
 
 #### Scenario: 访问评估历史页
-- **WHEN** 用户从 Drawer 点击"查看评估历史"
+- **WHEN** 用户点击侧边栏"评估历史"或从 Drawer 点击"查看评估历史"
 - **THEN** 跳转到 `/projects/:id/evaluation` 页面，展示评估记录表格和趋势折线图
+
+#### Scenario: 面包屑导航
+- **WHEN** 用户访问评估历史页
+- **THEN** 面包屑显示"项目管理 > 评估历史"
 
 #### Scenario: 指标趋势可视化
 - **WHEN** 评估历史 >= 2 条

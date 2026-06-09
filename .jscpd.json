@@ -1,0 +1,14 @@
+{
+  "threshold": 5,
+  "reporters": ["html", "console", "markdown"],
+  "ignore": [
+    "**/.venv/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/__pycache__/**",
+    "**/*.min.js"
+  ],
+  "minLines": 5,
+  "minTokens": 50,
+  "format": ["python", "typescript", "javascript", "vue"]
+}
