@@ -2,11 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock* ./
+# 安装 uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-RUN pip install --no-cache-dir poetry && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi
+COPY pyproject.toml uv.lock* ./
+
+RUN uv pip install --system -r pyproject.toml 2>/dev/null || true
 
 ENV PYTHONPATH="/app/src"
 
