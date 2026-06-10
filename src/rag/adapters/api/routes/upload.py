@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.document import DocumentPresenter
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 from rag.domain.value_objects.splitter_config import SplitterConfig
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
@@ -10,6 +12,7 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["upload"])
 @router.post("/documents")
 async def upload_documents(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     file: UploadFile = File(...),
     splitter_strategy: str = Form("section_heading"),
     chunk_size: int = Form(500),

@@ -9,5 +9,6 @@ class ProfilePresenter:
     def to_response(p: Profile) -> ProfileResponse:
         return ProfileResponse(
             id=p.id,
+            user_id=p.user_id,
             active_project_id=p.active_project_id,
         )

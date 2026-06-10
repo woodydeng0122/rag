@@ -5,6 +5,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.golden import GoldenPresenter
 from rag.adapters.api.schemas.golden import (
     CreateGoldenRequest,
@@ -16,6 +17,7 @@ from rag.adapters.api.schemas.golden import (
     RetrievalResponse,
 )
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ MAX_IMPORT_ROWS = 1000
 @router.get("/golden")
 async def list_goldens(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     status: str | None = None,
     retrieval_status: str | None = None,
     container: Container = Depends(get_container),
@@ -47,6 +50,7 @@ async def list_goldens(
 async def list_goldens_by_document(
     project_id: str,
     document_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """按文档 ID 查询关联的黄金记录"""
@@ -58,6 +62,7 @@ async def list_goldens_by_document(
 async def create_golden(
     project_id: str,
     req: CreateGoldenRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     record = await container.golden_usecase.create(
@@ -74,6 +79,7 @@ async def update_golden(
     project_id: str,
     record_id: str,
     req: UpdateGoldenRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -97,6 +103,7 @@ async def update_golden(
 async def delete_golden(
     project_id: str,
     record_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     deleted = await container.golden_usecase.delete(record_id)
@@ -110,6 +117,7 @@ async def create_retrieval(
     project_id: str,
     record_id: str,
     req: CreateRetrievalRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """触发检索 — 根据黄金记录的 query 执行语义检索，覆盖旧结果"""
@@ -126,6 +134,7 @@ async def create_retrieval(
 async def get_retrieval(
     project_id: str,
     record_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取检索结果 — 含 chunk 内容和 GT 命中标记"""
@@ -140,6 +149,7 @@ async def get_retrieval(
 async def import_golden(
     project_id: str,
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """上传 JSONL/CSV 文件批量导入黄金记录"""

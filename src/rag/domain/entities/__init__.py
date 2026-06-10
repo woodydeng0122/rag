@@ -5,6 +5,7 @@ from .embed_model import EmbedModel, ModelStatus
 from .golden_record import GoldenRecord, GoldenStatus
 from .project import Project
 from .profile import Profile
+from .user import User
 
 __all__ = [
     "Chunk",
@@ -17,4 +18,5 @@ __all__ = [
     "GoldenStatus",
     "Project",
     "Profile",
+    "User",
 ]

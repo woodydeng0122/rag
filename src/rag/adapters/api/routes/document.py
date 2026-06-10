@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.document import DocumentPresenter
 from rag.adapters.api.presenters.golden import GoldenPresenter
 from rag.adapters.api.schemas.document import BatchProcessRequest, ChunkListResponse, ChunkResponse
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 from rag.shared.logger import logger
 
 router = APIRouter(prefix="/api", tags=["documents"])
@@ -12,6 +14,7 @@ router = APIRouter(prefix="/api", tags=["documents"])
 @router.post("/documents/{document_id}/process")
 async def process_document(
     document_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -27,6 +30,7 @@ async def process_document(
 @router.get("/projects/{project_id}/documents")
 async def list_documents(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     results = await container.document_usecase.list_with_golden_counts(project_id)
@@ -36,6 +40,7 @@ async def list_documents(
 @router.delete("/documents/{document_id}")
 async def delete_document(
     document_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -50,6 +55,7 @@ async def delete_document(
 @router.get("/documents/{document_id}/chunks")
 async def list_chunks(
     document_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取文档的分块列表"""
@@ -63,6 +69,7 @@ async def list_chunks(
 @router.get("/documents/{document_id}/source")
 async def get_source_content(
     document_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取文档源文件内容（仅支持文本类型）"""
@@ -87,6 +94,7 @@ async def get_source_content(
 @router.get("/chunks/{chunk_id}/embedding")
 async def get_chunk_embedding(
     chunk_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取分块的 embedding 向量"""
@@ -99,6 +107,7 @@ async def get_chunk_embedding(
 @router.get("/projects/{project_id}/chunks/search")
 async def search_chunks_by_project(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     q: str = "",
     limit: int = 20,
     offset: int = 0,
@@ -115,6 +124,7 @@ async def search_chunks_by_project(
 @router.get("/projects/{project_id}/chunks/batch")
 async def get_chunks_batch(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     ids: str = "",
     container: Container = Depends(get_container),
 ):
@@ -141,6 +151,7 @@ async def get_chunks_batch(
 async def get_chunk_golden_records(
     project_id: str,
     chunk_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """查询分块关联的黄金记录"""
@@ -151,6 +162,7 @@ async def get_chunk_golden_records(
 @router.post("/documents/batch-process")
 async def batch_process_documents(
     req: BatchProcessRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """批量处理文档：对每个 document_id 依次执行处理"""

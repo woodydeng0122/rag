@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.embed_model import EmbedModelPresenter
 from rag.adapters.api.schemas.embed_model import (
     EmbedModelListResponse,
@@ -7,12 +8,14 @@ from rag.adapters.api.schemas.embed_model import (
     UpdateEmbedModelRequest,
 )
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 
 router = APIRouter(prefix="/api/embed-models", tags=["embed-models"])
 
 
 @router.get("")
 async def list_embed_models(
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     models = await container.embed_model_usecase.list()
@@ -22,6 +25,7 @@ async def list_embed_models(
 @router.get("/{model_id}")
 async def get_embed_model(
     model_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     model = await container.embed_model_usecase.get(model_id)
@@ -33,6 +37,7 @@ async def get_embed_model(
 @router.post("")
 async def create_embed_model(
     req: CreateEmbedModelRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -50,6 +55,7 @@ async def create_embed_model(
 async def update_embed_model(
     model_id: str,
     req: UpdateEmbedModelRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -68,6 +74,7 @@ async def update_embed_model(
 @router.delete("/{model_id}")
 async def delete_embed_model(
     model_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -83,6 +90,7 @@ async def delete_embed_model(
 
 @router.post("/status")
 async def refresh_embed_model_status(
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """刷新所有嵌入模型的在线状态"""

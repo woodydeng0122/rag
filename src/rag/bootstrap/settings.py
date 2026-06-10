@@ -25,6 +25,10 @@ class Settings:
     db_user: str = "admin"
     db_password: str = "password"
 
+    # JWT
+    jwt_secret_key: str = "rag-internal-default-secret"
+    jwt_expire_hours: int = 24
+
     @classmethod
     def from_env(cls) -> "Settings":
         """从环境变量读取配置，优先解析 DATABASE_URL"""
@@ -42,4 +46,6 @@ class Settings:
             db_name=parsed.path.lstrip("/") or "rag-db",
             db_user=parsed.username or "admin",
             db_password=parsed.password or "password",
+            jwt_secret_key=os.getenv("JWT_SECRET_KEY", "rag-internal-default-secret"),
+            jwt_expire_hours=int(os.getenv("JWT_EXPIRE_HOURS", "24")),
         )

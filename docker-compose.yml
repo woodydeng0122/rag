@@ -1,7 +1,9 @@
 services:
-  # AI Service (Python/Flask) - Run locally via image with local code mounted
   dev-service-rag:
-    image: python:3.11-slim
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rag-app:latest
     container_name: dev-service-rag
     working_dir: /app
     env_file:
@@ -12,8 +14,6 @@ services:
       DATABASE_URL: ${DATABASE_URL_DOCKER}
     volumes:
       - .:/app:cached
-      - pip-cache:/root/.cache/pip
-      - python-site-packages:/usr/local/lib/python3.11/site-packages
     ports:
       - "8000:8000"
     command: >

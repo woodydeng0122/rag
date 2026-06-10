@@ -17,7 +17,7 @@ class ProjectUseCase:
         self._project_repo = project_repo
         self._embed_model_repo = embed_model_repo
 
-    async def create(self, name: str, description: str, embed_model_id: str) -> Project:
+    async def create(self, name: str, description: str, embed_model_id: str, user_id: str) -> Project:
         """创建项目 — 校验嵌入模型存在且可用，维度与系统一致"""
         embed_model = await self._embed_model_repo.get_by_id(embed_model_id)
         if embed_model is None:
@@ -30,14 +30,15 @@ class ProjectUseCase:
             description=description,
             embed_model_id=embed_model_id,
             embed_dimension=embed_model.dimension,
+            user_id=user_id,
         )
         return await self._project_repo.save(project)
 
     async def get(self, project_id: str) -> Project | None:
         return await self._project_repo.get_by_id(project_id)
 
-    async def list(self) -> list[Project]:
-        return await self._project_repo.list()
+    async def list(self, user_id: str | None = None) -> list[Project]:
+        return await self._project_repo.list(user_id)
 
     async def update(self, project_id: str, name: str, description: str) -> Project:
         project = await self._project_repo.get_by_id(project_id)
@@ -61,9 +62,9 @@ class ProjectUseCase:
             return None
         return await self._to_result(project)
 
-    async def list_with_model_name(self) -> list[ProjectResult]:
+    async def list_with_model_name(self, user_id: str | None = None) -> list[ProjectResult]:
         """列出所有项目并附带嵌入模型名称"""
-        projects = await self._project_repo.list()
+        projects = await self._project_repo.list(user_id)
         return [await self._to_result(p) for p in projects]
 
     async def _to_result(self, project: Project) -> ProjectResult:

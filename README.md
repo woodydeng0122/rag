@@ -9,6 +9,9 @@ python -m rag api
 
 # 下载 embedding 模型
 python -m rag download-embedding -m 200~BAAI/bge-small-zh-v1.5 -o ./models
+
+# 创建用户
+python -m rag create-user --username admin --password xxx
 ```
 
 ### embedding 模型

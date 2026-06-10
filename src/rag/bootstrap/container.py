@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from rag.application.usecases.ask import AskUseCase
+from rag.application.usecases.auth import AuthUseCase
 from rag.application.usecases.batch_process_document import BatchProcessDocumentUseCase
 from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
@@ -35,6 +36,7 @@ class Container:
     document_usecase: DocumentUseCase
     embed_model_usecase: EmbedModelUseCase
     profile_usecase: ProfileUseCase
+    auth_usecase: AuthUseCase
     ask: AskUseCase
     qa: QAUseCase
     retrieve: RetrieveUseCase
@@ -59,6 +61,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_project_evaluation_repository import PgProjectEvaluationRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
     from rag.infra.repositories.pg_qa_repository import PgQARepository
+    from rag.infra.repositories.pg_user_repository import PgUserRepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.cosine_retriever import CosineRetriever
@@ -79,6 +82,7 @@ def _build_infra(settings: Settings):
     pg_project_evaluation_repo = PgProjectEvaluationRepository()
     pg_profile_repo = PgProfileRepository()
     pg_qa_repo = PgQARepository()
+    pg_user_repo = PgUserRepository()
 
     # 基础设施适配器
     print("[INIT] 初始化基础设施适配器...", flush=True)
@@ -115,6 +119,7 @@ def _build_infra(settings: Settings):
         "pg_project_evaluation_repo": pg_project_evaluation_repo,
         "pg_profile_repo": pg_profile_repo,
         "pg_qa_repo": pg_qa_repo,
+        "pg_user_repo": pg_user_repo,
         "embedder_pool": embedder_pool,
         "model_scanner": model_scanner,
         "file_storage": file_storage,
@@ -122,6 +127,8 @@ def _build_infra(settings: Settings):
         "splitter": splitter,
         "llm": llm,
         "retriever": retriever,
+        "jwt_secret_key": settings.jwt_secret_key,
+        "jwt_expire_hours": settings.jwt_expire_hours,
     }
 
 
@@ -201,6 +208,11 @@ def _build_usecases(infra: dict):
         golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
         evaluation_repo=infra["pg_project_evaluation_repo"],
     )
+    auth_usecase = AuthUseCase(
+        user_repo=infra["pg_user_repo"],
+        jwt_secret_key=infra.get("jwt_secret_key", "rag-internal-default-secret"),
+        jwt_expire_hours=infra.get("jwt_expire_hours", 24),
+    )
 
     return {
         "upload_usecase": upload_usecase,
@@ -214,6 +226,7 @@ def _build_usecases(infra: dict):
         "document_usecase": document_usecase,
         "embed_model_usecase": embed_model_usecase,
         "profile_usecase": profile_usecase,
+        "auth_usecase": auth_usecase,
         "ask": ask,
         "qa": qa,
         "retrieve": retrieve,

@@ -13,6 +13,8 @@ from .routes.embed_model import router as embed_model_router
 from .routes.golden import router as golden_router
 from .routes.profile import router as profile_router
 from .routes.qa import router as qa_router
+from .routes.auth import router as auth_router
+from .routes.user import router as user_router
 from .middleware.response_wrapper import ResponseWrapperMiddleware
 from .schemas.response import error, ERROR_CODE, TIMEOUT_CODE
 from rag.bootstrap.startup import startup, shutdown
@@ -80,6 +82,8 @@ app.add_middleware(
 
 # ========== 注册路由 ==========
 
+app.include_router(auth_router)
+app.include_router(user_router)
 app.include_router(health_router)
 app.include_router(retrieve_router)
 app.include_router(ask_router)

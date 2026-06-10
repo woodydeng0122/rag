@@ -10,6 +10,7 @@ def main():
 
     # ── 延迟注册所有命令 — 仅在执行时才 import 模块 ──────────
     register_command("migrate", help="执行数据库迁移", dependency="db", lazy_import="rag.adapters.cli.migrate")
+    register_command("create-user", help="创建用户", dependency="db", lazy_import="rag.adapters.cli.create_user")
     register_command("download-embedding", help="从 ModelScope 下载 embedding 模型", dependency="none", lazy_import="rag.adapters.cli.download")
     register_command("list-chunks", help="根据文档路径查询所有分块", dependency="db", lazy_import="rag.adapters.cli.list_chunks")
     register_command("list-projects", help="列出所有项目", dependency="db", lazy_import="rag.adapters.cli.list_projects")

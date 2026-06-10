@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.schemas.ask import AskRequest, AskResponse
 from rag.application.usecases.ask import AskUseCase
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["问答"])
 
@@ -11,6 +13,7 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["问答"])
 async def ask(
     project_id: str,
     req: AskRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ) -> AskResponse:
     """根据查询检索相关分块并生成回答（需要 LLM API Key）"""

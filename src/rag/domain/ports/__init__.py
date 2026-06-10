@@ -9,6 +9,7 @@ from .dir_loader import DirLoaderPort
 from .file_loader import FileLoaderPort
 from .splitter import SplitterPort
 from .file_storage import FileStoragePort
+from .user_repository import UserRepositoryPort
 
 __all__ = [
     "ChunkRepositoryPort",
@@ -23,4 +24,5 @@ __all__ = [
     "FileLoaderPort",
     "SplitterPort",
     "FileStoragePort",
+    "UserRepositoryPort",
 ]

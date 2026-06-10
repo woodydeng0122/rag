@@ -4,7 +4,7 @@ from rag.domain.ports.project_repository import ProjectRepositoryPort
 
 
 class ProfileUseCase:
-    """用户配置用例 — 获取/更新激活项目"""
+    """用户配置用例 — 获取/更新激活项目（per-user）"""
 
     def __init__(
         self,
@@ -14,12 +14,12 @@ class ProfileUseCase:
         self._profile_repo = profile_repo
         self._project_repo = project_repo
 
-    async def get(self) -> Profile:
-        return await self._profile_repo.get()
+    async def get(self, user_id: str) -> Profile:
+        return await self._profile_repo.get(user_id)
 
-    async def update(self, active_project_id: str | None) -> Profile:
+    async def update(self, user_id: str, active_project_id: str | None) -> Profile:
         if active_project_id is not None:
             project = await self._project_repo.get_by_id(active_project_id)
             if project is None:
                 raise ValueError("项目不存在")
-        return await self._profile_repo.upsert(active_project_id)
+        return await self._profile_repo.upsert(user_id, active_project_id)

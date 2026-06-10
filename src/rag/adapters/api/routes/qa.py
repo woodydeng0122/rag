@@ -5,6 +5,7 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.schemas.qa import (
     CreateSessionRequest,
     SessionResponse,
@@ -12,6 +13,7 @@ from rag.adapters.api.schemas.qa import (
     AskStreamRequest,
 )
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["问答"])
 async def create_session(
     project_id: str,
     req: CreateSessionRequest = CreateSessionRequest(),
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """创建问答会话"""
@@ -31,6 +34,7 @@ async def create_session(
 @router.get("/qa/sessions", response_model=list[SessionResponse])
 async def list_sessions(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取项目的所有问答会话"""
@@ -41,6 +45,7 @@ async def list_sessions(
 async def get_session(
     project_id: str,
     session_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取会话详情"""
@@ -54,6 +59,7 @@ async def get_session(
 async def delete_session(
     project_id: str,
     session_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """删除会话及其所有消息"""
@@ -67,6 +73,7 @@ async def delete_session(
 async def get_messages(
     project_id: str,
     session_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """获取会话的所有消息"""
@@ -78,6 +85,7 @@ async def ask_stream(
     project_id: str,
     session_id: str,
     req: AskStreamRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """流式问答 — SSE 逐 token 返回"""

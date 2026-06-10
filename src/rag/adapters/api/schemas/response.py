@@ -7,6 +7,11 @@ TIMEOUT_CODE = 401
 
 
 
+def ok(result=None, message: str = "success") -> dict:
+    """构造成功响应"""
+    return {"code": SUCCESS_CODE, "message": message, "result": result}
+
+
 def error(message: str, code: int = ERROR_CODE) -> dict:
     """构造错误响应"""
     return {"code": code, "message": message, "result": None}

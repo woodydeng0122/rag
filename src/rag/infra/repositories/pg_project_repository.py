@@ -7,19 +7,20 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
     """PostgreSQL 实现的项目仓储"""
 
     _SELECT = """SELECT id, name, description, embed_model_id, embed_dimension,
-                        created_at, updated_at
+                        user_id, created_at, updated_at
                  FROM project"""
 
     async def save(self, project: Project) -> Project:
         row = await self._fetch_one(
-            """INSERT INTO project (name, description, embed_model_id, embed_dimension)
-            VALUES ($1, $2, $3, $4)
+            """INSERT INTO project (name, description, embed_model_id, embed_dimension, user_id)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING id, name, description, embed_model_id, embed_dimension,
-                      created_at, updated_at""",
+                      user_id, created_at, updated_at""",
             project.name,
             project.description,
             to_uuid(project.embed_model_id) if project.embed_model_id else None,
             project.embed_dimension,
+            to_uuid(project.user_id) if project.user_id else None,
         )
         return _row_to_project(row)
 
@@ -41,10 +42,16 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
             return None
         return _row_to_project(row)
 
-    async def list(self) -> list[Project]:
-        rows = await self._fetch_all(
-            f"{self._SELECT} ORDER BY created_at DESC"
-        )
+    async def list(self, user_id: str | None = None) -> list[Project]:
+        if user_id:
+            rows = await self._fetch_all(
+                f"{self._SELECT} WHERE user_id = $1 ORDER BY created_at DESC",
+                to_uuid(user_id),
+            )
+        else:
+            rows = await self._fetch_all(
+                f"{self._SELECT} ORDER BY created_at DESC"
+            )
         return [_row_to_project(row) for row in rows]
 
     async def update(self, project: Project) -> Project:
@@ -52,7 +59,7 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
             """UPDATE project SET name = $1, description = $2, updated_at = now()
             WHERE id = $3
             RETURNING id, name, description, embed_model_id, embed_dimension,
-                      created_at, updated_at""",
+                      user_id, created_at, updated_at""",
             project.name,
             project.description,
             to_uuid(project.id),
@@ -67,12 +74,14 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
 
 def _row_to_project(row) -> Project:
     embed_model_id = row["embed_model_id"]
+    user_id = row["user_id"]
     return Project(
         id=str(row["id"]),
         name=row["name"],
         description=row["description"] or "",
         embed_model_id=str(embed_model_id) if embed_model_id else "",
         embed_dimension=row["embed_dimension"] or 512,
+        user_id=str(user_id) if user_id else "",
         created_at=row["created_at"],
         updated_at=row["updated_at"],
     )

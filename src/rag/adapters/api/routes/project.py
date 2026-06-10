@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
+from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.project import ProjectPresenter
 from rag.adapters.api.schemas.project import (
     CreateProjectRequest,
@@ -8,6 +9,7 @@ from rag.adapters.api.schemas.project import (
     UpdateProjectRequest,
 )
 from rag.bootstrap.container import Container, get_container
+from rag.domain.entities.user import User
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -15,6 +17,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 @router.post("")
 async def create_project(
     req: CreateProjectRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -22,6 +25,7 @@ async def create_project(
             name=req.name,
             description=req.description,
             embed_model_id=req.embed_model_id,
+            user_id=current_user.id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -31,15 +35,17 @@ async def create_project(
 
 @router.get("")
 async def list_projects(
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
-    results = await container.project_usecase.list_with_model_name()
+    results = await container.project_usecase.list_with_model_name(current_user.id)
     return [ProjectPresenter.to_response(r) for r in results]
 
 
 @router.get("/{project_id}")
 async def get_project(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     result = await container.project_usecase.get_with_model_name(project_id)
@@ -52,6 +58,7 @@ async def get_project(
 async def update_project(
     project_id: str,
     req: UpdateProjectRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -69,6 +76,7 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     try:
@@ -84,6 +92,7 @@ async def delete_project(
 async def create_evaluation_stats(
     project_id: str,
     req: EvaluationStatsRequest,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """触发项目评估统计 — 基于已有检索结果计算 recall@{top_k}、MRR 等指标"""
@@ -99,6 +108,7 @@ async def create_evaluation_stats(
 @router.get("/{project_id}/evaluation-stats", response_model=list[EvaluationStatsResponse])
 async def list_evaluation_stats(
     project_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """查询项目评估历史"""
@@ -110,6 +120,7 @@ async def list_evaluation_stats(
 async def delete_evaluation_stats(
     project_id: str,
     evaluation_id: str,
+    current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
     """删除评估记录"""
