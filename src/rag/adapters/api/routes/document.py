@@ -121,6 +121,17 @@ async def search_chunks_by_project(
     return DocumentPresenter.to_chunk_list_response(chunks, truncate=True)
 
 
+@router.get("/projects/{project_id}/chunks/count")
+async def count_chunks_by_project(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    container: Container = Depends(get_container),
+):
+    """统计项目下的分块总数"""
+    count = await container.document_usecase.count_chunks_by_project(project_id)
+    return {"count": count}
+
+
 @router.get("/projects/{project_id}/chunks/batch")
 async def get_chunks_batch(
     project_id: str,

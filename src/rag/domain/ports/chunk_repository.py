@@ -26,3 +26,8 @@ class ChunkRepositoryPort(ABC):
     async def get_by_ids_with_file_type(self, chunk_ids: list[str]) -> list[tuple[Chunk, str]]:
         """按 ID 列表批量查询 chunk，同时返回所属文档的 file_type"""
         ...
+
+    @abstractmethod
+    async def count_by_project(self, project_id: str) -> int:
+        """统计项目下的分块总数"""
+        ...

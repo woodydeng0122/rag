@@ -1,5 +1,5 @@
 from rag.domain.entities.embedding import Embedding
-from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort
+from rag.domain.ports.embedding_repository import EmbeddingRepositoryPort, EmbeddingSearchResult
 from rag.infra.repositories.base import BaseRepository, acquire_connection
 
 
@@ -39,6 +39,24 @@ class PgEmbeddingRepository(EmbeddingRepositoryPort, BaseRepository):
             project_id,
         )
         return [_row_to_embedding(row) for row in rows]
+
+    async def search_by_project(
+        self, project_id: str, query_vector: list[float], top_k: int
+    ) -> list[EmbeddingSearchResult]:
+        vector_str = _vector_to_str(query_vector)
+        rows = await self._fetch_all(
+            """SELECT e.chunk_id, 1 - (e.vector <=> $1::vector) AS score
+               FROM embedding e
+               JOIN chunk c ON e.chunk_id = c.id
+               JOIN document d ON c.document_id = d.id
+               WHERE d.project_id = $2
+               ORDER BY e.vector <=> $1::vector
+               LIMIT $3""",
+            vector_str,
+            project_id,
+            top_k,
+        )
+        return [EmbeddingSearchResult(chunk_id=row["chunk_id"], score=float(row["score"])) for row in rows]
 
 
 def _vector_to_str(vector: list[float]) -> str:

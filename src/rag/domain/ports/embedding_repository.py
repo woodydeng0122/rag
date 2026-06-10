@@ -1,5 +1,15 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
 from rag.domain.entities.embedding import Embedding
+
+
+@dataclass
+class EmbeddingSearchResult:
+    """向量检索结果项"""
+
+    chunk_id: str
+    score: float
 
 
 class EmbeddingRepositoryPort(ABC):
@@ -13,3 +23,8 @@ class EmbeddingRepositoryPort(ABC):
 
     @abstractmethod
     async def list_by_project(self, project_id: str) -> list[Embedding]: ...
+
+    @abstractmethod
+    async def search_by_project(
+        self, project_id: str, query_vector: list[float], top_k: int
+    ) -> list[EmbeddingSearchResult]: ...

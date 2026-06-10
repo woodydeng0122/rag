@@ -107,6 +107,18 @@ class PgChunkRepository(ChunkRepositoryPort):
             )
         return [(_row_to_chunk(row), row["document_file_type"]) for row in rows]
 
+    async def count_by_project(self, project_id: str) -> int:
+        """统计项目下的分块总数"""
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT COUNT(*) AS cnt FROM chunk c
+                   JOIN document d ON c.document_id = d.id
+                   WHERE d.project_id = $1""",
+                _to_uuid(project_id),
+            )
+        return row["cnt"] if row else 0
+
 
 def _to_uuid(value: str) -> str:
     return value

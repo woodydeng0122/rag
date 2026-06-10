@@ -90,6 +90,10 @@ class DocumentUseCase:
             return []
         return await self._chunk_repo.get_by_ids_with_file_type(chunk_ids)
 
+    async def count_chunks_by_project(self, project_id: str) -> int:
+        """统计项目下的分块总数"""
+        return await self._chunk_repo.count_by_project(project_id)
+
     async def get_embedding(self, chunk_id: str) -> Embedding | None:
         return await self._embedding_repo.get_by_chunk_id(chunk_id)
 
