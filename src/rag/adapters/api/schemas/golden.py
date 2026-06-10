@@ -64,6 +64,11 @@ class RetrievalResponse(BaseModel):
     latency_ms: int
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
+    load_embeddings_latency_ms: int = 0
+    load_project_latency_ms: int = 0
+    load_embed_model_latency_ms: int = 0
+    get_embedder_latency_ms: int = 0
+    build_matrix_latency_ms: int = 0
     embed_model_name: str = ""
     created_at: str = ""
     items: list[RetrievalItemResponse] = Field(default_factory=list)

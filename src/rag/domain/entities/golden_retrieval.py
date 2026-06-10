@@ -12,5 +12,10 @@ class GoldenRetrieval:
     embed_model_name: str
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
+    load_embeddings_latency_ms: int = 0
+    load_project_latency_ms: int = 0
+    load_embed_model_latency_ms: int = 0
+    get_embedder_latency_ms: int = 0
+    build_matrix_latency_ms: int = 0
     id: str = ""
     created_at: datetime | None = None

@@ -39,6 +39,11 @@ class GoldenRetrievalResult:
     items: list[RetrievalItemWithChunk]
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
+    load_embeddings_latency_ms: int = 0
+    load_project_latency_ms: int = 0
+    load_embed_model_latency_ms: int = 0
+    get_embedder_latency_ms: int = 0
+    build_matrix_latency_ms: int = 0
 
 
 class GoldenRetrieveUseCase:
@@ -104,6 +109,11 @@ class GoldenRetrieveUseCase:
             embed_model_name=embed_model_name,
             embed_latency_ms=output.embed_latency_ms,
             search_latency_ms=output.search_latency_ms,
+            load_embeddings_latency_ms=output.load_embeddings_latency_ms,
+            load_project_latency_ms=output.load_project_latency_ms,
+            load_embed_model_latency_ms=output.load_embed_model_latency_ms,
+            get_embedder_latency_ms=output.get_embedder_latency_ms,
+            build_matrix_latency_ms=output.build_matrix_latency_ms,
         )
         saved = await self._golden_retrieval_repo.save(retrieval, items)
 
@@ -184,4 +194,9 @@ class GoldenRetrieveUseCase:
             items=result_items,
             embed_latency_ms=retrieval.embed_latency_ms,
             search_latency_ms=retrieval.search_latency_ms,
+            load_embeddings_latency_ms=retrieval.load_embeddings_latency_ms,
+            load_project_latency_ms=retrieval.load_project_latency_ms,
+            load_embed_model_latency_ms=retrieval.load_embed_model_latency_ms,
+            get_embedder_latency_ms=retrieval.get_embedder_latency_ms,
+            build_matrix_latency_ms=retrieval.build_matrix_latency_ms,
         )

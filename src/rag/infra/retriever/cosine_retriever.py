@@ -27,16 +27,21 @@ class CosineRetriever(RetrieverPort):
         self._project_repo = project_repo
 
     async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> RetrievalOutput:
+        timings: dict[str, int] = {}
+
         # 从 PG 按项目加载嵌入
-        embeddings = await self._embedding_repo.list_by_project(project_id)
+        with measure(timings, "load_embeddings"):
+            embeddings = await self._embedding_repo.list_by_project(project_id)
         if not embeddings:
             return RetrievalOutput(results=[], embed_latency_ms=0, search_latency_ms=0)
 
         # 获取项目关联的嵌入模型
         embedder_model_name = ""
-        project = await self._project_repo.get_by_id(project_id)
+        with measure(timings, "load_project"):
+            project = await self._project_repo.get_by_id(project_id)
         if project and project.embed_model_id:
-            embed_model = await self._embed_model_repo.get_by_id(project.embed_model_id)
+            with measure(timings, "load_embed_model"):
+                embed_model = await self._embed_model_repo.get_by_id(project.embed_model_id)
             if embed_model and embed_model.is_online:
                 embedder_model_name = embed_model.name
 
@@ -44,12 +49,12 @@ class CosineRetriever(RetrieverPort):
             return RetrievalOutput(results=[], embed_latency_ms=0, search_latency_ms=0)
 
         # 获取对应的 embedder
-        embedder = self._embedder_pool.get(embedder_model_name)
+        with measure(timings, "get_embedder"):
+            embedder = self._embedder_pool.get(embedder_model_name)
 
         # 构建嵌入矩阵
-        embeddings_array = np.array([e.vector for e in embeddings])
-
-        timings: dict[str, int] = {}
+        with measure(timings, "build_matrix"):
+            embeddings_array = np.array([e.vector for e in embeddings])
 
         with measure(timings, "embed"):
             query_vectors = await asyncio.to_thread(embedder.embed, query)
@@ -69,4 +74,9 @@ class CosineRetriever(RetrieverPort):
             results=results,
             embed_latency_ms=timings.get("embed", 0),
             search_latency_ms=timings.get("search", 0),
+            load_embeddings_latency_ms=timings.get("load_embeddings", 0),
+            load_project_latency_ms=timings.get("load_project", 0),
+            load_embed_model_latency_ms=timings.get("load_embed_model", 0),
+            get_embedder_latency_ms=timings.get("get_embedder", 0),
+            build_matrix_latency_ms=timings.get("build_matrix", 0),
         )

@@ -10,3 +10,8 @@ class RetrievalOutput:
     results: list[RetrievalResult]
     embed_latency_ms: int
     search_latency_ms: int
+    load_embeddings_latency_ms: int = 0
+    load_project_latency_ms: int = 0
+    load_embed_model_latency_ms: int = 0
+    get_embedder_latency_ms: int = 0
+    build_matrix_latency_ms: int = 0

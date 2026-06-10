@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from rag.adapters.api.dependencies import get_current_user
 from rag.adapters.api.presenters.document import DocumentPresenter
 from rag.adapters.api.presenters.golden import GoldenPresenter
-from rag.adapters.api.schemas.document import BatchProcessRequest, ChunkListResponse, ChunkResponse
+from rag.adapters.api.schemas.document import BatchProcessRequest, ChunkListResponse, ChunkResponse, DocumentListResponse
 from rag.bootstrap.container import Container, get_container
 from rag.domain.entities.user import User
 from rag.shared.logger import logger
@@ -34,7 +34,7 @@ async def list_documents(
     container: Container = Depends(get_container),
 ):
     results = await container.document_usecase.list_with_golden_counts(project_id)
-    return [DocumentPresenter.to_document_response(r) for r in results]
+    return DocumentListResponse(documents=[DocumentPresenter.to_document_response(r) for r in results])
 
 
 @router.delete("/documents/{document_id}")

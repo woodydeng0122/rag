@@ -243,6 +243,11 @@ def _retrieval_result_to_response(result) -> RetrievalResponse:
         latency_ms=result.latency_ms,
         embed_latency_ms=getattr(result, "embed_latency_ms", 0),
         search_latency_ms=getattr(result, "search_latency_ms", 0),
+        load_embeddings_latency_ms=getattr(result, "load_embeddings_latency_ms", 0),
+        load_project_latency_ms=getattr(result, "load_project_latency_ms", 0),
+        load_embed_model_latency_ms=getattr(result, "load_embed_model_latency_ms", 0),
+        get_embedder_latency_ms=getattr(result, "get_embedder_latency_ms", 0),
+        build_matrix_latency_ms=getattr(result, "build_matrix_latency_ms", 0),
         embed_model_name=result.embed_model_name,
         created_at=result.created_at,
         items=[
