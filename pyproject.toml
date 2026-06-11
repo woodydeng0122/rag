@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "rag"
 version = "0.1.0"
@@ -42,6 +46,9 @@ explicit = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 # import-linter 配置
 # layers 列表从高到低：高层可以依赖低层，低层不能依赖高层
