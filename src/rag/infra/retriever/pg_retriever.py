@@ -11,7 +11,7 @@ from rag.shared.logger import logger
 from rag.shared.timer import measure
 
 
-class PgRetriever(RetrieverPort):
+class VectorRetriever(RetrieverPort):
     """基于 pgvector 余弦相似度的检索器实现"""
 
     def __init__(
@@ -27,7 +27,7 @@ class PgRetriever(RetrieverPort):
         self._project_repo = project_repo
 
     async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> RetrievalOutput:
-        logger.info({"message": f"检索策略=PgRetriever, project_id={project_id}, top_k={top_k}, query={query[:50]}"})
+        logger.info({"message": f"检索策略=VectorRetriever, project_id={project_id}, top_k={top_k}, query={query[:50]}"})
         timings: dict[str, int] = {}
 
         # 获取项目关联的嵌入模型

@@ -64,7 +64,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_user_repository import PgUserRepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
-    from rag.infra.retriever.pg_retriever import PgRetriever
+    from rag.infra.retriever.pg_retriever import VectorRetriever
     from rag.infra.retriever.pg_bm25_retriever import PgBm25Retriever
     from rag.infra.retriever.hybrid_retriever import HybridRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM
@@ -105,7 +105,7 @@ def _build_infra(settings: Settings):
     )
 
     # 检索器
-    vector_retriever = PgRetriever(
+    vector_retriever = VectorRetriever(
         embedder_pool=embedder_pool,
         embedding_repo=pg_embedding_repo,
         embed_model_repo=pg_embed_model_repo,

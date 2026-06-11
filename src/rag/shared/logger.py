@@ -146,7 +146,18 @@ def _format_wide_event(event: dict, c) -> str:
                 # dict 内嵌列表：显示非列表字段 + 列表字段摘要
                 for k, v in response_body.items():
                     if isinstance(v, list):
-                        summary = f"  {c.DIM}{k}: [{len(v)} items]{c.RESET}" if c is not _NoColor else f"  {k}: [{len(v)} items]"
+                        if len(v) > 0 and result_count and result_count > 3:
+                            # 大列表：只显示首项关键字段 + 总数
+                            first = v[0]
+                            if isinstance(first, dict):
+                                # 提取首项的关键标识字段（filename/id/name 等）
+                                key_fields = {fk: first[fk] for fk in ("id", "filename", "name", "title") if fk in first}
+                                preview_str = json.dumps(key_fields, ensure_ascii=False) if key_fields else "{...}"
+                            else:
+                                preview_str = str(first)[:80]
+                            summary = f"  {c.DIM}{k}: [{result_count} items] first={preview_str}{c.RESET}" if c is not _NoColor else f"  {k}: [{result_count} items] first={preview_str}"
+                        else:
+                            summary = f"  {c.DIM}{k}: [{len(v)} items]{c.RESET}" if c is not _NoColor else f"  {k}: [{len(v)} items]"
                         resp_lines.append(summary)
                     else:
                         val_str = json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v

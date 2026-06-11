@@ -93,12 +93,17 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
                             event["result_count"] = len(data)
                             event["response_body"] = data[:1] if data else []
                         else:
-                            # dict 内嵌列表字段（如 items）也提取 count
-                            for key in ("items", "records", "results", "data"):
-                                if isinstance(data.get(key), list):
-                                    event["result_count"] = len(data[key])
-                                    break
-                            event["response_body"] = data
+                            # dict 内嵌列表字段：扫描所有 list 类型字段
+                            list_keys = [k for k, v in data.items() if isinstance(v, list)]
+                            if list_keys:
+                                # 取最长的 list 字段作为 result_count
+                                primary = max(list_keys, key=lambda k: len(data[k]))
+                                event["result_count"] = len(data[primary])
+                                # 只保留首项预览，避免日志过长
+                                preview = {k: (v[:1] if isinstance(v, list) and len(v) > 3 else v) for k, v in data.items()}
+                                event["response_body"] = preview
+                            else:
+                                event["response_body"] = data
 
         # ── 构建最终响应 ──
         if wrapped_body_bytes is not None:
