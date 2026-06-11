@@ -78,6 +78,16 @@ class PgQARepository(QARepositoryPort, BaseRepository):
         )
         return [_row_to_message(r) for r in rows]
 
+    async def count_today_queries(self, project_id: str) -> int:
+        row = await self._fetch_one(
+            """SELECT COUNT(*) AS cnt FROM qa_message m
+               JOIN qa_session s ON m.session_id = s.id
+               WHERE s.project_id = $1 AND m.role = 'user'
+               AND m.created_at >= CURRENT_DATE""",
+            to_uuid(project_id),
+        )
+        return row["cnt"] if row else 0
+
 
 def _row_to_session(row) -> QASession:
     return QASession(

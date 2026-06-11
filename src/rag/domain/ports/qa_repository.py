@@ -26,3 +26,6 @@ class QARepositoryPort(ABC):
 
     @abstractmethod
     async def list_messages(self, session_id: str) -> list[QAMessage]: ...
+
+    @abstractmethod
+    async def count_today_queries(self, project_id: str) -> int: ...

@@ -14,12 +14,12 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 (project_id, top_k, golden_total, golden_retrieved,
                  recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                  avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                 embed_model_name)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                 embed_model_name, remark)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id, project_id, top_k, golden_total, golden_retrieved,
                           recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                           avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                          embed_model_name, created_at""",
+                          embed_model_name, remark, created_at""",
                 evaluation.project_id,
                 evaluation.top_k,
                 evaluation.golden_total,
@@ -33,6 +33,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 evaluation.avg_embed_latency_ms,
                 evaluation.avg_search_latency_ms,
                 evaluation.embed_model_name,
+                evaluation.remark,
             )
         return _row_to_evaluation(row)
 
@@ -43,7 +44,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 """SELECT id, project_id, top_k, golden_total, golden_retrieved,
                           recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                           avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                          embed_model_name, created_at
+                          embed_model_name, remark, created_at
                    FROM project_evaluation
                    WHERE project_id = $1
                    ORDER BY created_at DESC""",
@@ -60,6 +61,16 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 int(evaluation_id),
             )
         return result == "DELETE 1"
+
+    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE project_evaluation SET remark = $1 WHERE id = $2",
+                remark,
+                int(evaluation_id),
+            )
+        return result == "UPDATE 1"
 
 
 def _row_to_evaluation(row) -> ProjectEvaluation:
@@ -78,5 +89,6 @@ def _row_to_evaluation(row) -> ProjectEvaluation:
         avg_embed_latency_ms=float(row["avg_embed_latency_ms"]),
         avg_search_latency_ms=float(row["avg_search_latency_ms"]),
         embed_model_name=row["embed_model_name"] or "",
+        remark=row["remark"] or "",
         created_at=row["created_at"],
     )

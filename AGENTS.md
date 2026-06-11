@@ -13,7 +13,10 @@
 
 # 执行脚本时
 - 禁止启动开发环境！！！！，除非用户指定
-- 执行其他Python脚本前, 先运行: source .venv/bin/activate
+- 执行其他Python脚本前, 根据环境选择运行:
+    - windows: source .venv/Scripts/activate
+    - mac: source .venv/bin/activate
+
 
 # 有代码改动时自检
 1. 依赖方向是否符合: clean-architecture

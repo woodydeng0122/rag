@@ -6,6 +6,7 @@ from rag.adapters.api.schemas.project import (
     CreateProjectRequest,
     EvaluationStatsRequest,
     EvaluationStatsResponse,
+    UpdateEvaluationRemarkRequest,
     UpdateProjectRequest,
 )
 from rag.bootstrap.container import Container, get_container
@@ -98,7 +99,7 @@ async def create_evaluation_stats(
     """触发项目评估统计 — 基于已有检索结果计算 recall@{top_k}、MRR 等指标"""
     try:
         result = await container.evaluation_usecase.execute(
-            project_id=project_id, top_k=req.top_k
+            project_id=project_id, top_k=req.top_k, remark=req.remark
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -131,6 +132,26 @@ async def delete_evaluation_stats(
     return {"detail": "删除成功"}
 
 
+@router.patch("/{project_id}/evaluation-stats/{evaluation_id}", response_model=EvaluationStatsResponse)
+async def update_evaluation_remark(
+    project_id: str,
+    evaluation_id: str,
+    req: UpdateEvaluationRemarkRequest,
+    current_user: User = Depends(get_current_user),
+    container: Container = Depends(get_container),
+):
+    """更新评估记录备注"""
+    try:
+        await container.evaluation_usecase.update_remark(evaluation_id, req.remark)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    results = await container.evaluation_usecase.list_evaluations(project_id)
+    target = next((r for r in results if r.id == evaluation_id), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail="评估记录不存在")
+    return _evaluation_to_response(target)
+
+
 def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
     return EvaluationStatsResponse(
         id=evaluation.id,
@@ -147,5 +168,6 @@ def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
         avg_embed_latency_ms=evaluation.avg_embed_latency_ms,
         avg_search_latency_ms=evaluation.avg_search_latency_ms,
         embed_model_name=evaluation.embed_model_name,
+        remark=evaluation.remark,
         created_at=evaluation.created_at.isoformat() if evaluation.created_at else "",
     )

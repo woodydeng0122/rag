@@ -52,6 +52,9 @@ class QAUseCase(BaseRetrieveUseCase):
         messages = await self.qa_repo.list_messages(session_id)
         return [_message_to_result(m) for m in messages]
 
+    async def count_today_queries(self, project_id: str) -> int:
+        return await self.qa_repo.count_today_queries(project_id)
+
     # ── 问答（流式） ──
 
     async def ask_stream(

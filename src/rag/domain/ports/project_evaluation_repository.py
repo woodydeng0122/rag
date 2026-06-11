@@ -20,3 +20,8 @@ class ProjectEvaluationRepositoryPort(ABC):
     async def delete(self, evaluation_id: str) -> bool:
         """删除评估记录，返回是否成功"""
         ...
+
+    @abstractmethod
+    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
+        """更新评估记录备注，返回是否成功"""
+        ...

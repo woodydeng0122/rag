@@ -20,6 +20,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/projects/{project_id}", tags=["问答"])
 
 
+@router.get("/qa/today-queries")
+async def get_today_queries(
+    project_id: str,
+    current_user: User = Depends(get_current_user),
+    container: Container = Depends(get_container),
+):
+    """获取项目今日查询次数"""
+    count = await container.qa.count_today_queries(project_id)
+    return {"count": count}
+
+
 @router.post("/qa/sessions", response_model=SessionResponse)
 async def create_session(
     project_id: str,

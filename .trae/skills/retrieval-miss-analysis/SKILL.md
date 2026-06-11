@@ -5,37 +5,24 @@ description: "Analyzes retrieval miss reasons from golden dataset. Invoke when u
 
 # Retrieval Miss Analysis
 
-分析黄金数据集中检索未命中条目的根因，归类到标准 miss 类型，给出改进建议。
+分析黄金数据集中指定检索未命中条目的根因，归类到标准 miss 类型，给出改进建议。
 
 ## 触发条件
 
-- 用户要求分析检索未命中原因
-- 用户提到 "miss 分析"、"未命中诊断"、"retrieval miss"、"召回率低"
-- 用户想了解为什么某个查询检索不到期望的分块
+- 用户输入 `/retrieval-miss-analysis <golden_id>` 格式的命令
+- golden_id 为黄金数据集中某条记录的 ID
 
 ## 执行步骤
 
-### 1. 确定项目名
-
-如果用户已指定项目名，直接使用。
-
-如果用户未指定项目名，调用 CLI 获取项目列表供用户选择：
+### 1. 调用 CLI 获取指定未命中数据
 
 ```bash
-source .venv/bin/activate && python -m rag list-projects --format json
+source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format json
 ```
 
-解析 JSON 输出中的 `projects` 数组，提取每个项目的 `name` 字段，使用 AskUserQuestion 工具让用户选择项目。
+### 2. 分析 miss 原因
 
-### 2. 调用 CLI 获取未命中数据
-
-```bash
-source .venv/bin/activate && python -m rag miss <项目名> --format json
-```
-
-### 3. 逐条分析 miss 原因
-
-对每条未命中记录，根据以下信息进行分类：
+对该条未命中记录，根据以下信息进行分类：
 
 **输入数据**：
 - `query`: 用户查询
@@ -43,7 +30,7 @@ source .venv/bin/activate && python -m rag miss <项目名> --format json
 - `retrieved_chunks`: 实际检索到的分块（含内容、标题、源文件、分数、排名）
 - `reference_answer`: 参考答案
 
-### 4. Miss 分类体系
+### 3. Miss 分类体系
 
 | 类型 | 英文 | 判定依据 | 典型特征 |
 |------|------|----------|----------|
@@ -56,7 +43,7 @@ source .venv/bin/activate && python -m rag miss <项目名> --format json
 | **GT 标注错误** | `ground_truth_error` | GT 分块本身不是最佳答案，或标注有误 | GT 分块内容与参考答案不一致；存在更好的分块未被标注 |
 | **其他** | `other` | 不属于以上任何标准类型 | 必须在 `detail` 字段中给出自定义描述 |
 
-### 5. 分析判定规则
+### 4. 分析判定规则
 
 对每条 miss，按以下顺序判断：
 
@@ -73,17 +60,12 @@ source .venv/bin/activate && python -m rag miss <项目名> --format json
 
 **重要**：`other` 不是偷懒的垃圾桶。只有经过上述 7 步逐一排除后仍无法归类的 miss 才使用 `other`，且必须给出清晰的原因描述。如果 `other` 占比超过 20%，应重新审视分类体系是否需要扩展新类型。
 
-### 6. 输出格式
+### 5. 输出格式
 
 ```
 ## 检索未命中分析报告
 
-项目: <项目名>
-未命中总数: N
-
----
-
-### [1] <query 摘要>
+### <query 摘要>
 
 - **ID**: <golden_id>
 - **查询**: <完整 query>
@@ -95,21 +77,12 @@ source .venv/bin/activate && python -m rag miss <项目名> --format json
 
 ---
 
-### 汇总统计
+### 改进建议
 
-| 类型 | 数量 | 占比 |
-|------|------|------|
-| semantic_mismatch | N | XX% |
-| chunk_boundary_issue | N | XX% |
-| ... | ... | ... |
-
-### 优先改进建议
-
-1. <针对最高频 miss 类型的改进建议>
-2. <针对次高频 miss 类型的改进建议>
+<针对该 miss 类型的改进建议>
 ```
 
-### 7. 各类型改进建议参考
+### 6. 各类型改进建议参考
 
 | 类型 | 改进方向 |
 |------|----------|

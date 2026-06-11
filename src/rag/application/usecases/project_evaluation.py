@@ -20,7 +20,7 @@ class ProjectEvaluationUseCase:
         self._golden_retrieval_repo = golden_retrieval_repo
         self._evaluation_repo = evaluation_repo
 
-    async def execute(self, project_id: str, top_k: int = 10) -> ProjectEvaluation:
+    async def execute(self, project_id: str, top_k: int = 10, remark: str = "") -> ProjectEvaluation:
         """触发评估 — 加载检索结果 → 按 top_k 截断 → 计算指标 → 持久化"""
         # 加载项目下所有黄金记录
         golden_records = await self._golden_repo.list_by_project(project_id)
@@ -122,6 +122,7 @@ class ProjectEvaluationUseCase:
             avg_embed_latency_ms=avg_embed_latency_ms,
             avg_search_latency_ms=avg_search_latency_ms,
             embed_model_name=embed_model_name,
+            remark=remark,
         )
 
         return await self._evaluation_repo.save(evaluation)
@@ -134,5 +135,12 @@ class ProjectEvaluationUseCase:
         """删除评估记录"""
         deleted = await self._evaluation_repo.delete(evaluation_id)
         if not deleted:
+            raise ValueError("评估记录不存在")
+        return True
+
+    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
+        """更新评估记录备注"""
+        updated = await self._evaluation_repo.update_remark(evaluation_id, remark)
+        if not updated:
             raise ValueError("评估记录不存在")
         return True

@@ -19,5 +19,6 @@ class ProjectEvaluation:
     avg_embed_latency_ms: float
     avg_search_latency_ms: float
     embed_model_name: str = ""
+    remark: str = ""
     id: str = ""
     created_at: datetime | None = None
