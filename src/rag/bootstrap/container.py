@@ -17,6 +17,8 @@ from rag.application.usecases.qa import QAUseCase
 from rag.application.usecases.scan_embed_models import ScanEmbedModelsUseCase
 from rag.application.usecases.upload import UploadUseCase
 from rag.bootstrap.settings import Settings
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
+from rag.domain.ports.retriever import RetrieverPort
 from rag.infra.embedder.model_scanner import ModelScanner
 
 
@@ -43,6 +45,12 @@ class Container:
     settings: Settings
     # 基础设施
     model_scanner: ModelScanner
+    # 检索器工厂
+    _retrievers: dict[RetrievalStrategy, RetrieverPort] = None  # type: ignore[assignment]
+
+    def get_retriever(self, strategy: RetrievalStrategy = RetrievalStrategy.HYBRID) -> RetrieverPort:
+        """按策略获取检索器"""
+        return self._retrievers[strategy]
 
 
 # 模块级单例
@@ -65,6 +73,7 @@ def _build_infra(settings: Settings):
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
     from rag.infra.retriever.pg_retriever import VectorRetriever
+    from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.retriever.pg_bm25_retriever import PgBm25Retriever
     from rag.infra.retriever.hybrid_retriever import HybridRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM
@@ -105,6 +114,12 @@ def _build_infra(settings: Settings):
     )
 
     # 检索器
+    cosine_retriever = CosineRetriever(
+        embedder_pool=embedder_pool,
+        embedding_repo=pg_embedding_repo,
+        embed_model_repo=pg_embed_model_repo,
+        project_repo=pg_project_repo,
+    )
     vector_retriever = VectorRetriever(
         embedder_pool=embedder_pool,
         embedding_repo=pg_embedding_repo,
@@ -114,10 +129,17 @@ def _build_infra(settings: Settings):
     bm25_retriever = PgBm25Retriever(
         chunk_repo=pg_chunk_repo,
     )
-    retriever = HybridRetriever(
+    hybrid_retriever = HybridRetriever(
         vector_retriever=vector_retriever,
         bm25_retriever=bm25_retriever,
     )
+
+    retrievers = {
+        RetrievalStrategy.COSINE: cosine_retriever,
+        RetrievalStrategy.VECTOR: vector_retriever,
+        RetrievalStrategy.BM25: bm25_retriever,
+        RetrievalStrategy.HYBRID: hybrid_retriever,
+    }
 
     return {
         "pg_project_repo": pg_project_repo,
@@ -138,7 +160,7 @@ def _build_infra(settings: Settings):
         "preprocessor": preprocessor,
         "splitter": splitter,
         "llm": llm,
-        "retriever": retriever,
+        "retrievers": retrievers,
         "jwt_secret_key": settings.jwt_secret_key,
         "jwt_expire_hours": settings.jwt_expire_hours,
     }
@@ -173,7 +195,7 @@ def _build_usecases(infra: dict):
         chunk_repo=infra["pg_chunk_repo"],
     )
     golden_retrieve_usecase = GoldenRetrieveUseCase(
-        retriever=infra["retriever"],
+        retrievers=infra["retrievers"],
         golden_repo=infra["pg_golden_repo"],
         golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
         chunk_repo=infra["pg_chunk_repo"],
@@ -201,19 +223,19 @@ def _build_usecases(infra: dict):
         project_repo=infra["pg_project_repo"],
     )
     ask = AskUseCase(
-        retriever=infra["retriever"],
+        retriever=infra["retrievers"][RetrievalStrategy.HYBRID],
         chunk_repo=infra["pg_chunk_repo"],
         llm=infra["llm"],
     )
     qa = QAUseCase(
-        retriever=infra["retriever"],
+        retriever=infra["retrievers"][RetrievalStrategy.HYBRID],
         chunk_repo=infra["pg_chunk_repo"],
         llm=infra["llm"],
         qa_repo=infra["pg_qa_repo"],
     )
     from rag.application.usecases.retrieve import RetrieveUseCase
     retrieve = RetrieveUseCase(
-        retriever=infra["retriever"],
+        retriever=infra["retrievers"][RetrievalStrategy.HYBRID],
         chunk_repo=infra["pg_chunk_repo"],
     )
     evaluation_usecase = ProjectEvaluationUseCase(
@@ -259,6 +281,7 @@ def build_container(settings: Settings | None = None) -> Container:
         **usecases,
         settings=settings,
         model_scanner=infra["model_scanner"],
+        _retrievers=infra["retrievers"],
     )
 
     return _container

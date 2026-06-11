@@ -42,8 +42,18 @@ class GoldenResponse(BaseModel):
     retrieval_summary: RetrievalSummaryResponse | None = None
 
 
+class RetrievalStrategyEnum(str, Enum):
+    """检索策略枚举"""
+
+    COSINE = "cosine"
+    VECTOR = "vector"
+    BM25 = "bm25"
+    HYBRID = "hybrid"
+
+
 class CreateRetrievalRequest(BaseModel):
     max_k: int = Field(default=10, ge=1, le=100, description="检索最大返回数量")
+    strategy: RetrievalStrategyEnum = Field(default=RetrievalStrategyEnum.HYBRID, description="检索策略")
 
 
 class RetrievalItemResponse(BaseModel):
@@ -62,6 +72,7 @@ class RetrievalResponse(BaseModel):
     golden_id: str
     max_k: int
     latency_ms: int
+    strategy: str = "hybrid"
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
     load_embeddings_latency_ms: int = 0

@@ -5,6 +5,7 @@ from rag.domain.entities.project_evaluation import ProjectEvaluation
 from rag.domain.ports.golden_repository import GoldenRepositoryPort
 from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort
 from rag.domain.ports.project_evaluation_repository import ProjectEvaluationRepositoryPort
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 
 class ProjectEvaluationUseCase:
@@ -52,8 +53,12 @@ class ProjectEvaluationUseCase:
         embed_latency_sum = 0.0
         search_latency_sum = 0.0
         embed_model_name = ""
+        strategy = RetrievalStrategy.HYBRID
 
         for retrieval, items in retrieval_data:
+            # 取第一个检索结果的 strategy
+            if strategy == RetrievalStrategy.HYBRID and retrieval.strategy:
+                strategy = retrieval.strategy
             # 按 top_k 截断
             filtered_items = [item for item in items if item.rank <= top_k]
 
@@ -121,6 +126,7 @@ class ProjectEvaluationUseCase:
             avg_latency_ms=avg_latency_ms,
             avg_embed_latency_ms=avg_embed_latency_ms,
             avg_search_latency_ms=avg_search_latency_ms,
+            strategy=strategy,
             embed_model_name=embed_model_name,
             remark=remark,
         )

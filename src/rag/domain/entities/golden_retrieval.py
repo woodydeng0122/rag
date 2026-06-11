@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
+
 
 @dataclass
 class GoldenRetrieval:
@@ -10,6 +12,7 @@ class GoldenRetrieval:
     max_k: int
     latency_ms: int
     embed_model_name: str
+    strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
     load_embeddings_latency_ms: int = 0

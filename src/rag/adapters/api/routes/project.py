@@ -167,6 +167,7 @@ def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
         avg_latency_ms=evaluation.avg_latency_ms,
         avg_embed_latency_ms=evaluation.avg_embed_latency_ms,
         avg_search_latency_ms=evaluation.avg_search_latency_ms,
+        strategy=evaluation.strategy.value,
         embed_model_name=evaluation.embed_model_name,
         remark=evaluation.remark,
         created_at=evaluation.created_at.isoformat() if evaluation.created_at else "",

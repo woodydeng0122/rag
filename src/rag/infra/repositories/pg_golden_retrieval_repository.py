@@ -1,6 +1,7 @@
 from rag.domain.entities.golden_retrieval import GoldenRetrieval
 from rag.domain.entities.golden_retrieval_item import GoldenRetrievalItem
 from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort, RetrievalSummary
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 from rag.infra.repositories.base import BaseRepository, to_uuid, acquire_connection
 
 
@@ -15,15 +16,16 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort, BaseRepository)
                     to_uuid(retrieval.golden_id),
                 )
                 row = await conn.fetchrow(
-                    """INSERT INTO golden_retrieval (golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms,
+                    """INSERT INTO golden_retrieval (golden_id, max_k, latency_ms, embed_model_name, strategy, embed_latency_ms, search_latency_ms,
                        load_embeddings_latency_ms, load_project_latency_ms, load_embed_model_latency_ms, get_embedder_latency_ms, build_matrix_latency_ms)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                    RETURNING id, golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms,
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    RETURNING id, golden_id, max_k, latency_ms, embed_model_name, strategy, embed_latency_ms, search_latency_ms,
                               load_embeddings_latency_ms, load_project_latency_ms, load_embed_model_latency_ms, get_embedder_latency_ms, build_matrix_latency_ms, created_at""",
                     to_uuid(retrieval.golden_id),
                     retrieval.max_k,
                     retrieval.latency_ms,
                     retrieval.embed_model_name,
+                    retrieval.strategy.value,
                     retrieval.embed_latency_ms,
                     retrieval.search_latency_ms,
                     retrieval.load_embeddings_latency_ms,
@@ -47,7 +49,7 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort, BaseRepository)
     async def get_by_golden_id(self, golden_id: str) -> tuple[GoldenRetrieval, list[GoldenRetrievalItem]] | None:
         async with acquire_connection() as conn:
             row = await conn.fetchrow(
-                """SELECT id, golden_id, max_k, latency_ms, embed_model_name, embed_latency_ms, search_latency_ms,
+                """SELECT id, golden_id, max_k, latency_ms, embed_model_name, strategy, embed_latency_ms, search_latency_ms,
                           load_embeddings_latency_ms, load_project_latency_ms, load_embed_model_latency_ms, get_embedder_latency_ms, build_matrix_latency_ms, created_at
                 FROM golden_retrieval WHERE golden_id = $1""",
                 to_uuid(golden_id),
@@ -109,7 +111,7 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort, BaseRepository)
         async with acquire_connection() as conn:
             retrieval_rows = await conn.fetch(
                 """SELECT gr.id, gr.golden_id, gr.max_k, gr.latency_ms,
-                          gr.embed_model_name, gr.embed_latency_ms, gr.search_latency_ms,
+                          gr.embed_model_name, gr.strategy, gr.embed_latency_ms, gr.search_latency_ms,
                           gr.load_embeddings_latency_ms, gr.load_project_latency_ms,
                           gr.load_embed_model_latency_ms, gr.get_embedder_latency_ms, gr.build_matrix_latency_ms, gr.created_at
                    FROM golden_retrieval gr
@@ -144,6 +146,7 @@ def _row_to_retrieval(row) -> GoldenRetrieval:
         max_k=row["max_k"],
         latency_ms=row["latency_ms"],
         embed_model_name=row["embed_model_name"] or "",
+        strategy=RetrievalStrategy(row.get("strategy", "hybrid") or "hybrid"),
         embed_latency_ms=row.get("embed_latency_ms", 0) or 0,
         search_latency_ms=row.get("search_latency_ms", 0) or 0,
         load_embeddings_latency_ms=row.get("load_embeddings_latency_ms", 0) or 0,

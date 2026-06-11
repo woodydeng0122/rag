@@ -42,6 +42,7 @@ class EvaluationStatsResponse(BaseModel):
     avg_latency_ms: float
     avg_embed_latency_ms: float
     avg_search_latency_ms: float
+    strategy: str = "hybrid"
     embed_model_name: str = ""
     remark: str = ""
     created_at: str = ""

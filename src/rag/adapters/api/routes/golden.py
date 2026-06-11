@@ -15,9 +15,11 @@ from rag.adapters.api.schemas.golden import (
     CreateRetrievalRequest,
     RetrievalItemResponse,
     RetrievalResponse,
+    RetrievalStrategyEnum,
 )
 from rag.bootstrap.container import Container, get_container
 from rag.domain.entities.user import User
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +124,9 @@ async def create_retrieval(
 ):
     """触发检索 — 根据黄金记录的 query 执行语义检索，覆盖旧结果"""
     try:
+        strategy = RetrievalStrategy(req.strategy.value)
         result = await container.golden_retrieve_usecase.execute(
-            record_id=record_id, max_k=req.max_k
+            record_id=record_id, max_k=req.max_k, strategy=strategy
         )
     except ValueError as e:
         raise HTTPException(status_code=400 if "嵌入模型" in str(e) else 404, detail=str(e))
@@ -241,6 +244,7 @@ def _retrieval_result_to_response(result) -> RetrievalResponse:
         golden_id=result.golden_id,
         max_k=result.max_k,
         latency_ms=result.latency_ms,
+        strategy=getattr(result, "strategy", "hybrid"),
         embed_latency_ms=getattr(result, "embed_latency_ms", 0),
         search_latency_ms=getattr(result, "search_latency_ms", 0),
         load_embeddings_latency_ms=getattr(result, "load_embeddings_latency_ms", 0),

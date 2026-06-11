@@ -1,6 +1,6 @@
 import time
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from rag.domain.ports.retriever import RetrieverPort
 from rag.domain.ports.golden_repository import GoldenRepositoryPort
@@ -10,6 +10,7 @@ from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.entities.golden_retrieval import GoldenRetrieval
 from rag.domain.entities.golden_retrieval_item import GoldenRetrievalItem
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 
 @dataclass
@@ -36,7 +37,8 @@ class GoldenRetrievalResult:
     latency_ms: int
     embed_model_name: str
     created_at: str
-    items: list[RetrievalItemWithChunk]
+    strategy: str = "hybrid"
+    items: list[RetrievalItemWithChunk] = field(default_factory=list)
     embed_latency_ms: int = 0
     search_latency_ms: int = 0
     load_embeddings_latency_ms: int = 0
@@ -51,21 +53,26 @@ class GoldenRetrieveUseCase:
 
     def __init__(
         self,
-        retriever: RetrieverPort,
+        retrievers: dict[RetrievalStrategy, RetrieverPort],
         golden_repo: GoldenRepositoryPort,
         golden_retrieval_repo: GoldenRetrievalRepositoryPort,
         chunk_repo: ChunkRepositoryPort,
         project_repo: ProjectRepositoryPort,
         embed_model_repo: EmbedModelRepositoryPort,
     ):
-        self._retriever = retriever
+        self._retrievers = retrievers
         self._golden_repo = golden_repo
         self._golden_retrieval_repo = golden_retrieval_repo
         self._chunk_repo = chunk_repo
         self._project_repo = project_repo
         self._embed_model_repo = embed_model_repo
 
-    async def execute(self, record_id: str, max_k: int = 10) -> GoldenRetrievalResult:
+    async def execute(
+        self,
+        record_id: str,
+        max_k: int = 10,
+        strategy: RetrievalStrategy = RetrievalStrategy.HYBRID,
+    ) -> GoldenRetrievalResult:
         """触发检索 — 加载记录 → 检索 → 计时 → 持久化 → 返回结果"""
         # 加载黄金记录
         record = await self._golden_repo.get_by_id(record_id)
@@ -80,12 +87,14 @@ class GoldenRetrieveUseCase:
             if embed_model and embed_model.is_online:
                 embed_model_name = embed_model.name
 
-        if not embed_model_name:
+        # BM25 不需要嵌入模型，其余策略需要
+        if strategy != RetrievalStrategy.BM25 and not embed_model_name:
             raise ValueError("项目未配置在线嵌入模型，无法执行检索")
 
         # 执行检索并计时
+        retriever = self._retrievers[strategy]
         start = time.monotonic()
-        output = await self._retriever.retrieve(
+        output = await retriever.retrieve(
             query=record.query, project_id=record.project_id, top_k=max_k
         )
         latency_ms = int((time.monotonic() - start) * 1000)
@@ -107,6 +116,7 @@ class GoldenRetrieveUseCase:
             max_k=max_k,
             latency_ms=latency_ms,
             embed_model_name=embed_model_name,
+            strategy=strategy,
             embed_latency_ms=output.embed_latency_ms,
             search_latency_ms=output.search_latency_ms,
             load_embeddings_latency_ms=output.load_embeddings_latency_ms,
@@ -191,6 +201,7 @@ class GoldenRetrieveUseCase:
             latency_ms=retrieval.latency_ms,
             embed_model_name=retrieval.embed_model_name,
             created_at=retrieval.created_at.isoformat() if retrieval.created_at else "",
+            strategy=retrieval.strategy.value,
             items=result_items,
             embed_latency_ms=retrieval.embed_latency_ms,
             search_latency_ms=retrieval.search_latency_ms,

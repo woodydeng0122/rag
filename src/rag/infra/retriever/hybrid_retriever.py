@@ -12,7 +12,10 @@ class HybridRetriever(RetrieverPort):
 
     RRF (Reciprocal Rank Fusion) 公式：
         score(d) = Σ 1 / (k + rank_i(d))
-    其中 k 为平滑常数（默认 60），rank_i(d) 为文档 d 在第 i 路检索中的排名。
+
+    k 越小，融合对排名差异越敏感。
+    当 chunk 同时出现在两路时，得分 = 1/(k+rank_vector) + 1/(k+rank_bm25)，
+    显著高于单路命中的 chunk，实现"两路都认可则优先"的效果。
 
     每路按 overretrieve_factor 倍过量召回，融合后再截断到 top_k，
     避免 GT chunk 因单路排名靠后被提前截断。
@@ -22,7 +25,7 @@ class HybridRetriever(RetrieverPort):
         self,
         vector_retriever: RetrieverPort,
         bm25_retriever: RetrieverPort,
-        rrf_k: int = 60,
+        rrf_k: float = 1.0,
         overretrieve_factor: int = 3,
     ):
         self._vector = vector_retriever
@@ -34,24 +37,21 @@ class HybridRetriever(RetrieverPort):
         logger.info({"message": f"检索策略=HybridRetriever, project_id={project_id}, top_k={top_k}, query={query[:50]}"})
         timings: dict[str, int] = {}
 
-        # 每路过量召回，扩大融合池
         fetch_k = top_k * self._overretrieve_factor
 
-        # 双路并行召回
         with measure(timings, "search"):
             vector_output, bm25_output = await asyncio.gather(
                 self._vector.retrieve(query, project_id, fetch_k),
                 self._bm25.retrieve(query, project_id, fetch_k),
             )
 
-        # RRF 融合
+        # RRF 融合：两路得分各自归一化后相加
         scores: dict[str, float] = {}
         for rank, r in enumerate(vector_output.results, start=1):
             scores[r.chunk_id] = scores.get(r.chunk_id, 0) + 1.0 / (self._rrf_k + rank)
         for rank, r in enumerate(bm25_output.results, start=1):
             scores[r.chunk_id] = scores.get(r.chunk_id, 0) + 1.0 / (self._rrf_k + rank)
 
-        # 按融合得分降序，取 top_k
         sorted_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
         results = [
             RetrievalResult(chunk_id=chunk_id, score=score)

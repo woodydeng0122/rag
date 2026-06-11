@@ -1,5 +1,6 @@
 from rag.domain.entities.project_evaluation import ProjectEvaluation
 from rag.domain.ports.project_evaluation_repository import ProjectEvaluationRepositoryPort
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 from rag.infra.database.connection import get_pool
 
 
@@ -14,12 +15,12 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 (project_id, top_k, golden_total, golden_retrieved,
                  recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                  avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                 embed_model_name, remark)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                 strategy, embed_model_name, remark)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 RETURNING id, project_id, top_k, golden_total, golden_retrieved,
                           recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                           avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                          embed_model_name, remark, created_at""",
+                          strategy, embed_model_name, remark, created_at""",
                 evaluation.project_id,
                 evaluation.top_k,
                 evaluation.golden_total,
@@ -32,6 +33,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 evaluation.avg_latency_ms,
                 evaluation.avg_embed_latency_ms,
                 evaluation.avg_search_latency_ms,
+                evaluation.strategy.value,
                 evaluation.embed_model_name,
                 evaluation.remark,
             )
@@ -44,7 +46,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
                 """SELECT id, project_id, top_k, golden_total, golden_retrieved,
                           recall_at_k, mrr, hit_rate, full_hit_count, zero_hit_count,
                           avg_latency_ms, avg_embed_latency_ms, avg_search_latency_ms,
-                          embed_model_name, remark, created_at
+                          strategy, embed_model_name, remark, created_at
                    FROM project_evaluation
                    WHERE project_id = $1
                    ORDER BY created_at DESC""",
@@ -88,6 +90,7 @@ def _row_to_evaluation(row) -> ProjectEvaluation:
         avg_latency_ms=float(row["avg_latency_ms"]),
         avg_embed_latency_ms=float(row["avg_embed_latency_ms"]),
         avg_search_latency_ms=float(row["avg_search_latency_ms"]),
+        strategy=RetrievalStrategy(row.get("strategy", "hybrid") or "hybrid"),
         embed_model_name=row["embed_model_name"] or "",
         remark=row["remark"] or "",
         created_at=row["created_at"],

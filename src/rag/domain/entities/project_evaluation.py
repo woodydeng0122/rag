@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
+
 
 @dataclass
 class ProjectEvaluation:
@@ -18,6 +20,7 @@ class ProjectEvaluation:
     avg_latency_ms: float
     avg_embed_latency_ms: float
     avg_search_latency_ms: float
+    strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
     embed_model_name: str = ""
     remark: str = ""
     id: str = ""
