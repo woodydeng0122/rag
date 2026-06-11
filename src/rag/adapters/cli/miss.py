@@ -92,7 +92,7 @@ async def handle(args, settings):
         }
 
         if output_format == "json":
-            print(json.dumps(miss, ensure_ascii=False))
+            print(json.dumps(miss, ensure_ascii=True))
         else:
             print(f"项目: {row['project_name']}")
             print(f"黄金记录 ID: {row['id']}")

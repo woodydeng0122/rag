@@ -58,7 +58,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
         async with pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM project_evaluation WHERE id = $1",
-                int(evaluation_id),
+                evaluation_id,
             )
         return result == "DELETE 1"
 
@@ -68,7 +68,7 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
             result = await conn.execute(
                 "UPDATE project_evaluation SET remark = $1 WHERE id = $2",
                 remark,
-                int(evaluation_id),
+                evaluation_id,
             )
         return result == "UPDATE 1"
 

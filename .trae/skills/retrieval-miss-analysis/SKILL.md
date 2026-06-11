@@ -41,13 +41,16 @@ source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format j
 | **嵌入模型局限** | `embedding_limitation` | 嵌入模型本身无法区分细粒度差异 | 同一文档的多个分块语义高度相似；模型维度不足 |
 | **查询歧义** | `query_ambiguity` | 查询本身模糊，多个合理解读导致 GT 不唯一 | 查询短且缺乏上下文；GT 分块与 retrieved 分块都合理 |
 | **GT 标注错误** | `ground_truth_error` | GT 分块本身不是最佳答案，或标注有误 | GT 分块内容与参考答案不一致；存在更好的分块未被标注 |
+| **GT 不完整** | `ground_truth_incomplete` | GT 分块内容不完整，关键信息在链接指向的其他文档中 | GT 分块只是提示横幅/导航元素；内容中包含指向其他文档的链接但答案在那边；heading 为空或缺失上下文 |
 | **其他** | `other` | 不属于以上任何标准类型 | 必须在 `detail` 字段中给出自定义描述 |
 
 ### 4. 分析判定规则
 
 对每条 miss，按以下顺序判断：
 
-1. **检查 GT 质量**：GT 分块内容是否完整、是否与参考答案一致 → 不一致则归为 `ground_truth_error`
+1. **检查 GT 质量**：
+   - GT 分块内容与参考答案是否一致 → 不一致则归为 `ground_truth_error`
+   - GT 分块是否只是提示横幅/导航元素，关键信息在链接指向的其他文档中 → 是则归为 `ground_truth_incomplete`
 2. **检查分块边界**：GT 分块内容是否被截断、关键信息是否跨分块 → 是则归为 `chunk_boundary_issue`
 3. **检查查询歧义**：查询是否短且模糊、是否存在多个合理解读 → 是则归为 `query_ambiguity`
 4. **检查检索结果**：retrieved_chunks 是否与查询部分相关但子话题不同 → 是则归为 `context_pollution`
@@ -93,4 +96,5 @@ source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format j
 | `embedding_limitation` | 升级 embedding 模型维度；使用领域微调模型；添加 sparse retrieval 补充 |
 | `query_ambiguity` | 添加 query 扩展/改写；增加对话上下文；要求用户补充信息 |
 | `ground_truth_error` | 修正 GT 标注；重新审核黄金数据集质量 |
+| `ground_truth_incomplete` | 将 GT 修正为链接指向的完整文档分块；如果目标文档未分块，该记录应从黄金数据集中清理 |
 | `other` | 根据具体原因针对性改进；如果 other 占比 >20% 建议扩展分类体系 |
