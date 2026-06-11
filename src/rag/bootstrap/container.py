@@ -64,7 +64,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_user_repository import PgUserRepository
     from rag.infra.embedder.sentence_transformer import SentenceTransformerEmbedder
     from rag.infra.embedder.embedder_pool import EmbedderPool
-    from rag.infra.retriever.cosine_retriever import CosineRetriever
+    from rag.infra.retriever.pg_retriever import PgRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM
     from rag.infra.loader.file_document_loader import FileDocumentLoader
     from rag.infra.preprocessor.mkdocs_preprocessor import MkDocsPreprocessor
@@ -103,7 +103,7 @@ def _build_infra(settings: Settings):
     )
 
     # 检索器
-    retriever = CosineRetriever(
+    retriever = PgRetriever(
         embedder_pool=embedder_pool,
         embedding_repo=pg_embedding_repo,
         embed_model_repo=pg_embed_model_repo,
