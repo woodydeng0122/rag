@@ -11,6 +11,19 @@ def _tokenize(text: str) -> str:
     return " ".join(jieba.cut(text))
 
 
+def _build_or_tsquery(text: str) -> str:
+    """jieba 分词 → 构建 OR 连接的 tsquery，任一 token 匹配即可召回"""
+    tokens = jieba.cut(text)
+    # 过滤短 token 和标点，simple 分词器会将它们转为合法的 tsquery term
+    terms = [t for t in tokens if t.strip() and len(t.strip()) > 1]
+    if not terms:
+        # 回退：用单字符 token
+        terms = [t.strip() for t in jieba.cut(text) if t.strip()]
+    if not terms:
+        return ""
+    return " | ".join(terms)
+
+
 class PgChunkRepository(ChunkRepositoryPort):
     """PostgreSQL 实现的分块仓储"""
 
@@ -128,20 +141,22 @@ class PgChunkRepository(ChunkRepositoryPort):
         return row["cnt"] if row else 0
 
     async def search_fulltext(self, project_id: str, query: str, top_k: int = 10) -> list[FulltextSearchResult]:
-        """全文检索 — jieba 分词查询 + ts_vector + ts_rank_cd 排序"""
-        tokenized_query = _tokenize(query)
+        """全文检索 — jieba 分词 + OR tsquery + ts_rank_cd 排序"""
+        tsquery_str = _build_or_tsquery(query)
+        if not tsquery_str:
+            return []
         pool = get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT c.id AS chunk_id,
-                          ts_rank_cd(c.search_vector, plainto_tsquery('simple', $1)) AS score
+                          ts_rank_cd(c.search_vector, to_tsquery('simple', $1)) AS score
                    FROM chunk c
                    JOIN document d ON c.document_id = d.id
                    WHERE d.project_id = $2
-                     AND c.search_vector @@ plainto_tsquery('simple', $1)
+                     AND c.search_vector @@ to_tsquery('simple', $1)
                    ORDER BY score DESC
                    LIMIT $3""",
-                tokenized_query,
+                tsquery_str,
                 _to_uuid(project_id),
                 top_k,
             )

@@ -13,6 +13,9 @@ class HybridRetriever(RetrieverPort):
     RRF (Reciprocal Rank Fusion) 公式：
         score(d) = Σ 1 / (k + rank_i(d))
     其中 k 为平滑常数（默认 60），rank_i(d) 为文档 d 在第 i 路检索中的排名。
+
+    每路按 overretrieve_factor 倍过量召回，融合后再截断到 top_k，
+    避免 GT chunk 因单路排名靠后被提前截断。
     """
 
     def __init__(
@@ -20,20 +23,25 @@ class HybridRetriever(RetrieverPort):
         vector_retriever: RetrieverPort,
         bm25_retriever: RetrieverPort,
         rrf_k: int = 60,
+        overretrieve_factor: int = 3,
     ):
         self._vector = vector_retriever
         self._bm25 = bm25_retriever
         self._rrf_k = rrf_k
+        self._overretrieve_factor = overretrieve_factor
 
     async def retrieve(self, query: str, project_id: str, top_k: int = 3) -> RetrievalOutput:
         logger.info({"message": f"检索策略=HybridRetriever, project_id={project_id}, top_k={top_k}, query={query[:50]}"})
         timings: dict[str, int] = {}
 
+        # 每路过量召回，扩大融合池
+        fetch_k = top_k * self._overretrieve_factor
+
         # 双路并行召回
         with measure(timings, "search"):
             vector_output, bm25_output = await asyncio.gather(
-                self._vector.retrieve(query, project_id, top_k),
-                self._bm25.retrieve(query, project_id, top_k),
+                self._vector.retrieve(query, project_id, fetch_k),
+                self._bm25.retrieve(query, project_id, fetch_k),
             )
 
         # RRF 融合
