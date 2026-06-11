@@ -16,6 +16,7 @@ def main():
     register_command("list-projects", help="列出所有项目", dependency="db", lazy_import="rag.adapters.cli.list_projects")
     register_command("api", help="启动 API 服务", dependency="full_container", lazy_import="rag.adapters.cli.api")
     register_command("miss", help="筛选项目中检索未命中的黄金记录", dependency="db", lazy_import="rag.adapters.cli.miss")
+    register_command("backfill-tokens", help="回填 chunk 的 search_tokens（jieba 分词）", dependency="db", lazy_import="rag.adapters.cli.backfill_tokens")
 
     # ── 构建 argparse ─────────────────────────────────────
     import argparse

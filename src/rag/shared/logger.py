@@ -130,17 +130,30 @@ def _format_wide_event(event: dict, c) -> str:
     resp_lines = []
     if response_body is not None:
         if result_count is not None:
-            # 列表型响应：只显示首项预览 + 总数
-            if response_body:
-                preview = _truncate(response_body[0], max_str=120, max_list=2)
-                preview_str = json.dumps(preview, ensure_ascii=False, indent=2)
-                first_line = f"  {c.DIM}[0] {preview_str.split(chr(10))[0]}{c.RESET}" if c is not _NoColor else f"  [0] {preview_str.split(chr(10))[0]}"
-                resp_lines.append(first_line)
-                if result_count > 1:
-                    more = f"  {c.DIM}... +{result_count - 1} more items{c.RESET}" if c is not _NoColor else f"  ... +{result_count - 1} more items"
-                    resp_lines.append(more)
-            else:
-                resp_lines.append(f"  {c.DIM}[] (empty list){c.RESET}" if c is not _NoColor else "  [] (empty list)")
+            if isinstance(response_body, list):
+                # 列表型响应：只显示首项预览 + 总数
+                if response_body:
+                    preview = _truncate(response_body[0], max_str=120, max_list=2)
+                    preview_str = json.dumps(preview, ensure_ascii=False, indent=2)
+                    first_line = f"  {c.DIM}[0] {preview_str.split(chr(10))[0]}{c.RESET}" if c is not _NoColor else f"  [0] {preview_str.split(chr(10))[0]}"
+                    resp_lines.append(first_line)
+                    if result_count > 1:
+                        more = f"  {c.DIM}... +{result_count - 1} more items{c.RESET}" if c is not _NoColor else f"  ... +{result_count - 1} more items"
+                        resp_lines.append(more)
+                else:
+                    resp_lines.append(f"  {c.DIM}[] (empty list){c.RESET}" if c is not _NoColor else "  [] (empty list)")
+            elif isinstance(response_body, dict):
+                # dict 内嵌列表：显示非列表字段 + 列表字段摘要
+                for k, v in response_body.items():
+                    if isinstance(v, list):
+                        summary = f"  {c.DIM}{k}: [{len(v)} items]{c.RESET}" if c is not _NoColor else f"  {k}: [{len(v)} items]"
+                        resp_lines.append(summary)
+                    else:
+                        val_str = json.dumps(v, ensure_ascii=False) if not isinstance(v, str) else v
+                        if len(val_str) > 80:
+                            val_str = val_str[:80] + "..."
+                        line = f"  {c.DIM}{k}: {val_str}{c.RESET}" if c is not _NoColor else f"  {k}: {val_str}"
+                        resp_lines.append(line)
         else:
             truncated = _truncate(response_body)
             body_str = json.dumps(truncated, ensure_ascii=False, indent=2)

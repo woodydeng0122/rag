@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from rag.domain.entities.chunk import Chunk
+from rag.domain.value_objects.fulltext_search_result import FulltextSearchResult
 
 
 class ChunkRepositoryPort(ABC):
@@ -30,4 +31,9 @@ class ChunkRepositoryPort(ABC):
     @abstractmethod
     async def count_by_project(self, project_id: str) -> int:
         """统计项目下的分块总数"""
+        ...
+
+    @abstractmethod
+    async def search_fulltext(self, project_id: str, query: str, top_k: int = 10) -> list[FulltextSearchResult]:
+        """全文检索 — 基于 ts_vector 的 BM25 风格搜索"""
         ...

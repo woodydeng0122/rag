@@ -1,6 +1,14 @@
+import jieba
+
 from rag.domain.entities.chunk import Chunk
+from rag.domain.value_objects.fulltext_search_result import FulltextSearchResult
 from rag.domain.ports.chunk_repository import ChunkRepositoryPort
 from rag.infra.database.connection import get_pool
+
+
+def _tokenize(text: str) -> str:
+    """jieba 分词 → 空格分隔字符串，供 PostgreSQL simple 分词器使用"""
+    return " ".join(jieba.cut(text))
 
 
 class PgChunkRepository(ChunkRepositoryPort):
@@ -12,11 +20,11 @@ class PgChunkRepository(ChunkRepositoryPort):
         pool = get_pool()
         async with pool.acquire() as conn:
             await conn.executemany(
-                """INSERT INTO chunk (id, document_id, content, index, heading, source_file)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT (id) DO UPDATE SET content = $3, heading = $5""",
+                """INSERT INTO chunk (id, document_id, content, index, heading, source_file, search_tokens)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (id) DO UPDATE SET content = $3, heading = $5, search_tokens = $7""",
                 [
-                    (c.id, _to_uuid(document_id), c.content, c.index, c.heading, c.source_file)
+                    (c.id, _to_uuid(document_id), c.content, c.index, c.heading, c.source_file, _tokenize(c.content))
                     for c in chunks
                 ],
             )
@@ -118,6 +126,26 @@ class PgChunkRepository(ChunkRepositoryPort):
                 _to_uuid(project_id),
             )
         return row["cnt"] if row else 0
+
+    async def search_fulltext(self, project_id: str, query: str, top_k: int = 10) -> list[FulltextSearchResult]:
+        """全文检索 — jieba 分词查询 + ts_vector + ts_rank_cd 排序"""
+        tokenized_query = _tokenize(query)
+        pool = get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT c.id AS chunk_id,
+                          ts_rank_cd(c.search_vector, plainto_tsquery('simple', $1)) AS score
+                   FROM chunk c
+                   JOIN document d ON c.document_id = d.id
+                   WHERE d.project_id = $2
+                     AND c.search_vector @@ plainto_tsquery('simple', $1)
+                   ORDER BY score DESC
+                   LIMIT $3""",
+                tokenized_query,
+                _to_uuid(project_id),
+                top_k,
+            )
+        return [FulltextSearchResult(chunk_id=row["chunk_id"], score=float(row["score"])) for row in rows]
 
 
 def _to_uuid(value: str) -> str:

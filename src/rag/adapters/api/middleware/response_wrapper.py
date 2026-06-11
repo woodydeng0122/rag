@@ -93,6 +93,11 @@ class ResponseWrapperMiddleware(BaseHTTPMiddleware):
                             event["result_count"] = len(data)
                             event["response_body"] = data[:1] if data else []
                         else:
+                            # dict 内嵌列表字段（如 items）也提取 count
+                            for key in ("items", "records", "results", "data"):
+                                if isinstance(data.get(key), list):
+                                    event["result_count"] = len(data[key])
+                                    break
                             event["response_body"] = data
 
         # ── 构建最终响应 ──
