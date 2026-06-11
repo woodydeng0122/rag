@@ -9,10 +9,11 @@ from rag.domain.ports.splitter import SplitterPort
 from rag.domain.ports.project_repository import ProjectRepositoryPort
 from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.embedder_pool import EmbedderPoolPort
+from rag.domain.ports.markdown_preprocessor import MarkdownPreprocessorPort
 
 
 class ProcessDocumentUseCase:
-    """文档处理用例 — 手动触发分块+嵌入，从项目读取模型配置"""
+    """文档处理用例 — 手动触发预处理+分块+嵌入，从项目读取模型配置"""
 
     def __init__(
         self,
@@ -24,6 +25,7 @@ class ProcessDocumentUseCase:
         loader: FileLoaderPort,
         splitter: SplitterPort,
         embedder_pool: EmbedderPoolPort,
+        preprocessor: MarkdownPreprocessorPort,
     ):
         self._document_repo = document_repo
         self._chunk_repo = chunk_repo
@@ -33,6 +35,7 @@ class ProcessDocumentUseCase:
         self._loader = loader
         self._splitter = splitter
         self._embedder_pool = embedder_pool
+        self._preprocessor = preprocessor
 
     async def execute(self, document_id: str) -> Document:
         # 1. 获取文档
@@ -57,7 +60,11 @@ class ProcessDocumentUseCase:
             # 3. 加载文档文本
             text = self._load_text(doc)
 
-            # 4. 分块
+            # 4. 预处理（展开文件包含、剥离锚点等 Markdown 扩展语法）
+            if doc.is_text_file:
+                text = self._preprocessor.preprocess(text, source_path=doc.storage_key)
+
+            # 5. 分块
             doc.start_chunking()
             await self._document_repo.update_status(document_id, doc.status)
             chunks = self._splitter.split(text, **doc.splitter_config.to_splitter_kwargs())
@@ -70,13 +77,13 @@ class ProcessDocumentUseCase:
             await self._document_repo.update_status(document_id, doc.status)
             await self._document_repo.update_chunk_count(document_id, doc.chunk_count)
 
-            # 5. 嵌入
+            # 6. 嵌入
             doc.start_embedding()
             await self._document_repo.update_status(document_id, doc.status)
             texts = [c.content for c in chunks]
             vectors = embedder.embed(texts)
 
-            # 6. 保存嵌入
+            # 7. 保存嵌入
             embeddings = [
                 Embedding(chunk_id=c.id, vector=v, embedder_model=embed_model.name)
                 for c, v in zip(chunks, vectors)
@@ -85,7 +92,7 @@ class ProcessDocumentUseCase:
             doc.finish_embedding()
             await self._document_repo.update_status(document_id, doc.status)
 
-            # 7. 完成
+            # 8. 完成
             doc.mark_ready()
             await self._document_repo.update_status(document_id, doc.status)
 

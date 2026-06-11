@@ -67,6 +67,7 @@ def _build_infra(settings: Settings):
     from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.llm.dashscope_llm import DashScopeLLM
     from rag.infra.loader.file_document_loader import FileDocumentLoader
+    from rag.infra.preprocessor.mkdocs_preprocessor import MkDocsPreprocessor
     from rag.infra.splitter.section_heading_splitter import SectionHeadingSplitter
     from rag.infra.storage.local_file_storage import LocalFileStorage
 
@@ -90,6 +91,7 @@ def _build_infra(settings: Settings):
     model_scanner = ModelScanner(models_dir="models")
     file_storage = LocalFileStorage()
     loader = FileDocumentLoader()
+    preprocessor = MkDocsPreprocessor()
     splitter = SectionHeadingSplitter(
         min_chars=settings.splitter_min_chars,
         max_chars=settings.splitter_max_chars,
@@ -124,6 +126,7 @@ def _build_infra(settings: Settings):
         "model_scanner": model_scanner,
         "file_storage": file_storage,
         "loader": loader,
+        "preprocessor": preprocessor,
         "splitter": splitter,
         "llm": llm,
         "retriever": retriever,
@@ -151,6 +154,7 @@ def _build_usecases(infra: dict):
         loader=infra["loader"],
         splitter=infra["splitter"],
         embedder_pool=infra["embedder_pool"],
+        preprocessor=infra["preprocessor"],
     )
     batch_process_usecase = BatchProcessDocumentUseCase(
         process_document_usecase=process_document_usecase,
