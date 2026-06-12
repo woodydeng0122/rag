@@ -2,7 +2,9 @@ import time
 
 from dataclasses import dataclass, field
 
-from rag.domain.ports.reranker import RerankerPort
+from rag.domain.ports.reranker import RerankerPoolPort
+from rag.domain.ports.project_repository import ProjectRepositoryPort
+from rag.domain.ports.embed_model_repository import EmbedModelRepositoryPort
 from rag.domain.ports.golden_repository import GoldenRepositoryPort
 from rag.domain.ports.golden_retrieval_repository import GoldenRetrievalRepositoryPort
 from rag.domain.ports.golden_rerank_repository import GoldenRerankRepositoryPort, RerankSummary
@@ -36,6 +38,9 @@ class GoldenRerankResult:
     latency_ms: int
     model_name: str
     created_at: str
+    load_retrieval_latency_ms: int = 0
+    load_chunks_latency_ms: int = 0
+    predict_latency_ms: int = 0
     items: list[RerankItemWithChunk] = field(default_factory=list)
 
 
@@ -44,17 +49,21 @@ class GoldenRerankUseCase:
 
     def __init__(
         self,
-        reranker: RerankerPort,
+        reranker_pool: RerankerPoolPort,
         golden_repo: GoldenRepositoryPort,
         golden_retrieval_repo: GoldenRetrievalRepositoryPort,
         golden_rerank_repo: GoldenRerankRepositoryPort,
         chunk_repo: ChunkRepositoryPort,
+        project_repo: ProjectRepositoryPort,
+        embed_model_repo: EmbedModelRepositoryPort,
     ):
-        self._reranker = reranker
+        self._reranker_pool = reranker_pool
         self._golden_repo = golden_repo
         self._golden_retrieval_repo = golden_retrieval_repo
         self._golden_rerank_repo = golden_rerank_repo
         self._chunk_repo = chunk_repo
+        self._project_repo = project_repo
+        self._embed_model_repo = embed_model_repo
 
     async def execute(self, record_id: str, top_k: int = 10) -> GoldenRerankResult:
         """触发重排 — 读取粗排 → 取前 top_k 候选 → reranker 重排 → 持久化 → 返回"""
@@ -63,8 +72,21 @@ class GoldenRerankUseCase:
         if record is None:
             raise ValueError(f"黄金记录 {record_id} 不存在")
 
+        # 校验项目是否配置了重排模型
+        project = await self._project_repo.get_by_id(record.project_id)
+        if project is None or not project.rerank_model_id:
+            raise ValueError("项目未配置重排模型")
+
+        # 获取重排模型信息
+        rerank_model = await self._embed_model_repo.get_by_id(project.rerank_model_id)
+        if rerank_model is None:
+            raise ValueError("重排模型不存在")
+
         # 加载粗排结果
+        t0 = time.monotonic()
         retrieval_result = await self._golden_retrieval_repo.get_by_golden_id(record_id)
+        load_retrieval_latency_ms = int((time.monotonic() - t0) * 1000)
+
         if retrieval_result is None:
             raise ValueError(f"黄金记录 {record_id} 无粗排结果，请先执行检索")
 
@@ -79,8 +101,10 @@ class GoldenRerankUseCase:
         candidates = sorted_items[:top_k]
 
         # 加载候选 chunk 内容
+        t1 = time.monotonic()
         chunk_ids = [item.chunk_id for item in candidates]
         chunk_map = await self._load_chunk_map(record.project_id, chunk_ids)
+        load_chunks_latency_ms = int((time.monotonic() - t1) * 1000)
 
         # 构建文档列表（用于 reranker 输入）
         documents = []
@@ -88,12 +112,27 @@ class GoldenRerankUseCase:
             entry = chunk_map.get(item.chunk_id)
             documents.append(entry[0].content if entry else "")
 
-        # 执行重排
-        start = time.monotonic()
-        rerank_results = await self._reranker.rerank(
-            query=record.query, documents=documents, top_k=top_k
-        )
-        latency_ms = int((time.monotonic() - start) * 1000)
+        # 通过 RerankerPool 获取 CrossEncoder 实例并执行重排
+        model_path = f"models/{rerank_model.name}"
+        reranker = self._reranker_pool.get(model_path)
+
+        t2 = time.monotonic()
+        pairs = [(record.query, doc) for doc in documents]
+        scores = reranker.predict(pairs)
+
+        # 按分数降序排列，取 top_k
+        indexed_scores = list(enumerate(scores))
+        indexed_scores.sort(key=lambda x: x[1], reverse=True)
+
+        from rag.domain.value_objects.rerank_result import RerankResult
+        rerank_results = [
+            RerankResult(index=idx, score=float(score))
+            for idx, score in indexed_scores[:top_k]
+        ]
+        predict_latency_ms = int((time.monotonic() - t2) * 1000)
+
+        # 总延迟 = 加载粗排 + 加载 chunk + 推理
+        latency_ms = load_retrieval_latency_ms + load_chunks_latency_ms + predict_latency_ms
 
         # 构建重排明细
         rerank_items = []
@@ -114,7 +153,10 @@ class GoldenRerankUseCase:
             golden_id=record_id,
             top_k=top_k,
             latency_ms=latency_ms,
-            model_name="BAAI/bge-reranker-base",
+            model_name=rerank_model.name,
+            load_retrieval_latency_ms=load_retrieval_latency_ms,
+            load_chunks_latency_ms=load_chunks_latency_ms,
+            predict_latency_ms=predict_latency_ms,
         )
         saved = await self._golden_rerank_repo.save(rerank, rerank_items)
 
@@ -189,5 +231,8 @@ class GoldenRerankUseCase:
             latency_ms=rerank.latency_ms,
             model_name=rerank.model_name,
             created_at=rerank.created_at.isoformat() if rerank.created_at else "",
+            load_retrieval_latency_ms=rerank.load_retrieval_latency_ms,
+            load_chunks_latency_ms=rerank.load_chunks_latency_ms,
+            predict_latency_ms=rerank.predict_latency_ms,
             items=result_items,
         )

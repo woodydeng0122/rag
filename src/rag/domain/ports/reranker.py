@@ -8,3 +8,12 @@ class RerankerPort(ABC):
 
     @abstractmethod
     async def rerank(self, query: str, documents: list[str], top_k: int = 10) -> list[RerankResult]: ...
+
+
+class RerankerPoolPort(ABC):
+    """重排器池端口 — 按 model_path 获取 CrossEncoder 实例的抽象"""
+
+    @abstractmethod
+    def get(self, model_path: str):
+        """获取或创建 CrossEncoder 实例"""
+        ...

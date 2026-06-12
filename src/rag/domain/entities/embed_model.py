@@ -13,7 +13,7 @@ class ModelStatus(str, Enum):
 
 @dataclass
 class EmbedModel:
-    """嵌入模型实体 — 注册可用的 embedding 模型
+    """嵌入模型实体 — 注册可用的 embedding / reranker 模型
 
     充血模型：封装永远成立的约束和纯函数性质的业务规则。
     业务场景的流程、需要外部信息的决策留在 Use Case。
@@ -21,6 +21,7 @@ class EmbedModel:
 
     id: str = ""
     name: str = ""
+    model_type: str = "embed"  # "embed" | "reranker"
     dimension: int = 0
     description: str = ""
     status: ModelStatus = ModelStatus.OFFLINE
@@ -37,6 +38,7 @@ class EmbedModel:
         *,
         id: str,
         name: str,
+        model_type: str,
         dimension: int,
         description: str,
         status: ModelStatus,
@@ -48,6 +50,7 @@ class EmbedModel:
         obj = object.__new__(cls)
         obj.id = id
         obj.name = name
+        obj.model_type = model_type
         obj.dimension = dimension
         obj.description = description
         obj.status = status
@@ -74,8 +77,8 @@ class EmbedModel:
     # ── 永远成立的约束 ────────────────────────────────────
 
     def ensure_complete(self) -> None:
-        """校验模型完整性 — 维度不能为零，任何场景都应遵守"""
-        if not self.dimension:
+        """校验模型完整性 — embed 类型维度不能为零，reranker 跳过校验"""
+        if self.model_type == "embed" and not self.dimension:
             raise ValueError("无法确定向量维度：本地未找到模型且未指定 dimension")
 
     # ── 修改规则 ──────────────────────────────────────────

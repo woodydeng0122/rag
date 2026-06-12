@@ -23,9 +23,13 @@ class ScanEmbedModelsUseCase:
         # 2. Upsert 扫描到的模型 — 业务场景：本地存在 → online
         for s in scanned:
             model_config = ModelConfig.from_dict(s.metadata)
-            dimension = model_config.hidden_size or s.dimension
+            if s.model_type == "embed":
+                dimension = model_config.hidden_size or s.dimension
+            else:
+                dimension = 0
             model = EmbedModel(
                 name=s.name,
+                model_type=s.model_type,
                 dimension=dimension,
                 status=ModelStatus.ONLINE,
                 config=model_config,

@@ -11,6 +11,7 @@ from rag.adapters.api.schemas.project import (
 )
 from rag.bootstrap.container import Container, get_container
 from rag.domain.entities.user import User
+from rag.domain.entities.project_evaluation import EvaluationCategory
 from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
@@ -28,6 +29,7 @@ async def create_project(
             description=req.description,
             embed_model_id=req.embed_model_id,
             user_id=current_user.id,
+            rerank_model_id=req.rerank_model_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -101,7 +103,9 @@ async def create_evaluation_stats(
     try:
         result = await container.evaluation_usecase.execute(
             project_id=project_id, top_k=req.top_k,
-            strategy=RetrievalStrategy(req.strategy.value), remark=req.remark
+            strategy=RetrievalStrategy(req.strategy.value),
+            category=EvaluationCategory(req.category.value),
+            remark=req.remark
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -166,12 +170,14 @@ def _evaluation_to_response(evaluation) -> EvaluationStatsResponse:
         golden_retrieved=evaluation.golden_retrieved,
         recall_at_k=evaluation.recall_at_k,
         mrr=evaluation.mrr,
+        ndcg=evaluation.ndcg,
         hit_rate=evaluation.hit_rate,
         full_hit_count=evaluation.full_hit_count,
         zero_hit_count=evaluation.zero_hit_count,
         avg_latency_ms=evaluation.avg_latency_ms,
         avg_embed_latency_ms=evaluation.avg_embed_latency_ms,
         avg_search_latency_ms=evaluation.avg_search_latency_ms,
+        category=evaluation.category.value,
         strategy=evaluation.strategy.value,
         embed_model_name=evaluation.embed_model_name,
         remark=evaluation.remark,

@@ -79,7 +79,6 @@ def _build_infra(settings: Settings):
     from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.retriever.pg_bm25_retriever import PgBm25Retriever
     from rag.infra.retriever.hybrid_retriever import HybridRetriever
-    from rag.infra.reranker.sentence_transformer_reranker import SentenceTransformerReranker
     from rag.infra.llm.dashscope_llm import DashScopeLLM
     from rag.infra.loader.file_document_loader import FileDocumentLoader
     from rag.infra.preprocessor.mkdocs_preprocessor import MkDocsPreprocessor
@@ -146,8 +145,9 @@ def _build_infra(settings: Settings):
         RetrievalStrategy.HYBRID: hybrid_retriever,
     }
 
-    # 重排器
-    reranker = SentenceTransformerReranker()
+    # 重排器池
+    from rag.infra.reranker.reranker_pool import RerankerPool
+    reranker_pool = RerankerPool(max_size=3)
 
     return {
         "pg_project_repo": pg_project_repo,
@@ -170,7 +170,7 @@ def _build_infra(settings: Settings):
         "splitter": splitter,
         "llm": llm,
         "retrievers": retrievers,
-        "reranker": reranker,
+        "reranker_pool": reranker_pool,
         "jwt_secret_key": settings.jwt_secret_key,
         "jwt_expire_hours": settings.jwt_expire_hours,
     }
@@ -213,11 +213,13 @@ def _build_usecases(infra: dict):
         embed_model_repo=infra["pg_embed_model_repo"],
     )
     golden_rerank_usecase = GoldenRerankUseCase(
-        reranker=infra["reranker"],
+        reranker_pool=infra["reranker_pool"],
         golden_repo=infra["pg_golden_repo"],
         golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
         golden_rerank_repo=infra["pg_golden_rerank_repo"],
         chunk_repo=infra["pg_chunk_repo"],
+        project_repo=infra["pg_project_repo"],
+        embed_model_repo=infra["pg_embed_model_repo"],
     )
     project_usecase = ProjectUseCase(
         project_repo=infra["pg_project_repo"],
@@ -259,6 +261,8 @@ def _build_usecases(infra: dict):
         golden_repo=infra["pg_golden_repo"],
         golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
         evaluation_repo=infra["pg_project_evaluation_repo"],
+        golden_rerank_repo=infra["pg_golden_rerank_repo"],
+        project_repo=infra["pg_project_repo"],
     )
     auth_usecase = AuthUseCase(
         user_repo=infra["pg_user_repo"],

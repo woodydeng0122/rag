@@ -7,19 +7,20 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
     """PostgreSQL 实现的项目仓储"""
 
     _SELECT = """SELECT id, name, description, embed_model_id, embed_dimension,
-                        user_id, created_at, updated_at
+                        rerank_model_id, user_id, created_at, updated_at
                  FROM project"""
 
     async def save(self, project: Project) -> Project:
         row = await self._fetch_one(
-            """INSERT INTO project (name, description, embed_model_id, embed_dimension, user_id)
-            VALUES ($1, $2, $3, $4, $5)
+            """INSERT INTO project (name, description, embed_model_id, embed_dimension, rerank_model_id, user_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING id, name, description, embed_model_id, embed_dimension,
-                      user_id, created_at, updated_at""",
+                      rerank_model_id, user_id, created_at, updated_at""",
             project.name,
             project.description,
             to_uuid(project.embed_model_id) if project.embed_model_id else None,
             project.embed_dimension,
+            to_uuid(project.rerank_model_id) if project.rerank_model_id else None,
             to_uuid(project.user_id) if project.user_id else None,
         )
         return _row_to_project(row)
@@ -59,7 +60,7 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
             """UPDATE project SET name = $1, description = $2, updated_at = now()
             WHERE id = $3
             RETURNING id, name, description, embed_model_id, embed_dimension,
-                      user_id, created_at, updated_at""",
+                      rerank_model_id, user_id, created_at, updated_at""",
             project.name,
             project.description,
             to_uuid(project.id),
@@ -74,6 +75,7 @@ class PgProjectRepository(ProjectRepositoryPort, BaseRepository):
 
 def _row_to_project(row) -> Project:
     embed_model_id = row["embed_model_id"]
+    rerank_model_id = row["rerank_model_id"]
     user_id = row["user_id"]
     return Project(
         id=str(row["id"]),
@@ -81,6 +83,7 @@ def _row_to_project(row) -> Project:
         description=row["description"] or "",
         embed_model_id=str(embed_model_id) if embed_model_id else "",
         embed_dimension=row["embed_dimension"] or 512,
+        rerank_model_id=str(rerank_model_id) if rerank_model_id else "",
         user_id=str(user_id) if user_id else "",
         created_at=row["created_at"],
         updated_at=row["updated_at"],

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from sentence_transformers import CrossEncoder
@@ -22,7 +23,7 @@ class SentenceTransformerReranker(RerankerPort):
             return []
 
         pairs = [(query, doc) for doc in documents]
-        scores = self._model.predict(pairs)
+        scores = await asyncio.to_thread(self._model.predict, pairs)
 
         # 按分数降序排列，取 top_k
         indexed_scores = list(enumerate(scores))

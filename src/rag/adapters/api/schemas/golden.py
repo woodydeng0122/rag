@@ -121,5 +121,8 @@ class RerankResponse(BaseModel):
     top_k: int
     latency_ms: int
     model_name: str = ""
+    load_retrieval_latency_ms: int = 0
+    load_chunks_latency_ms: int = 0
+    predict_latency_ms: int = 0
     created_at: str = ""
     items: list[RerankItemResponse] = Field(default_factory=list)

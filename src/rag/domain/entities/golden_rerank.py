@@ -10,5 +10,8 @@ class GoldenRerank:
     top_k: int
     latency_ms: int
     model_name: str
+    load_retrieval_latency_ms: int = 0
+    load_chunks_latency_ms: int = 0
+    predict_latency_ms: int = 0
     id: str = ""
     created_at: datetime | None = None

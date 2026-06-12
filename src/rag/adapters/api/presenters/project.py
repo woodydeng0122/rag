@@ -15,6 +15,8 @@ class ProjectPresenter:
             embed_model_id=p.embed_model_id,
             embed_model_name=result.embed_model_name,
             embed_dimension=p.embed_dimension,
+            rerank_model_id=p.rerank_model_id,
+            rerank_model_name=result.rerank_model_name,
             created_at=p.created_at.isoformat() if p.created_at else "",
             updated_at=p.updated_at.isoformat() if p.updated_at else "",
         )

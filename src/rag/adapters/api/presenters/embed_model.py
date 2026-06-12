@@ -16,6 +16,7 @@ class EmbedModelPresenter:
         return EmbedModelItem(
             id=m.id,
             name=m.name,
+            model_type=m.model_type,
             dimension=m.dimension,
             description=m.description,
             status=_DOMAIN_TO_API_MODEL_STATUS[m.status],

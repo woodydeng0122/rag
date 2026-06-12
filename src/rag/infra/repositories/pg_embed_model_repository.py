@@ -9,18 +9,18 @@ from rag.infra.repositories.base import BaseRepository, acquire_connection
 class PgEmbedModelRepository(EmbedModelRepositoryPort, BaseRepository):
     """PostgreSQL 实现的嵌入模型仓储"""
 
-    _UPSERT_SQL = """INSERT INTO embed_model (name, dimension, description, status, metadata)
-                VALUES ($1, $2, $3, $4, $5::jsonb)
+    _UPSERT_SQL = """INSERT INTO embed_model (name, model_type, dimension, description, status, metadata)
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb)
                 ON CONFLICT (name) DO UPDATE SET
-                    dimension = $2, description = $3, status = $4, metadata = $5::jsonb, updated_at = now()
-                RETURNING id, name, dimension, description, status, metadata, created_at, updated_at"""
+                    model_type = $2, dimension = $3, description = $4, status = $5, metadata = $6::jsonb, updated_at = now()
+                RETURNING id, name, model_type, dimension, description, status, metadata, created_at, updated_at"""
 
-    _SELECT_ALL = "SELECT id, name, dimension, description, status, metadata, created_at, updated_at FROM embed_model"
+    _SELECT_ALL = "SELECT id, name, model_type, dimension, description, status, metadata, created_at, updated_at FROM embed_model"
 
     async def save(self, model: EmbedModel) -> EmbedModel:
         row = await self._fetch_one(
             self._UPSERT_SQL,
-            model.name, model.dimension, model.description, model.status.value,
+            model.name, model.model_type, model.dimension, model.description, model.status.value,
             json.dumps(model.config.to_dict(), ensure_ascii=False),
         )
         return _row_to_model(row)
@@ -33,7 +33,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort, BaseRepository):
             for m in models:
                 row = await conn.fetchrow(
                     self._UPSERT_SQL,
-                    m.name, m.dimension, m.description, m.status.value,
+                    m.name, m.model_type, m.dimension, m.description, m.status.value,
                     json.dumps(m.config.to_dict(), ensure_ascii=False),
                 )
                 results.append(_row_to_model(row))
@@ -67,7 +67,7 @@ class PgEmbedModelRepository(EmbedModelRepositoryPort, BaseRepository):
         row = await self._fetch_one(
             """UPDATE embed_model SET name = $1, description = $2, status = $3, updated_at = now()
             WHERE id = $4
-            RETURNING id, name, dimension, description, status, metadata, created_at, updated_at""",
+            RETURNING id, name, model_type, dimension, description, status, metadata, created_at, updated_at""",
             model.name, model.description, model.status.value, model.id,
         )
         if row is None:
@@ -85,6 +85,7 @@ def _row_to_model(row) -> EmbedModel:
     return EmbedModel.reconstruct(
         id=str(row["id"]),
         name=row["name"],
+        model_type=row["model_type"],
         dimension=row["dimension"],
         description=row["description"] or "",
         status=ModelStatus(row["status"]),

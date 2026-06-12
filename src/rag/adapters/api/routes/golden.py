@@ -325,6 +325,9 @@ def _rerank_result_to_response(result) -> RerankResponse:
         top_k=result.top_k,
         latency_ms=result.latency_ms,
         model_name=result.model_name,
+        load_retrieval_latency_ms=result.load_retrieval_latency_ms,
+        load_chunks_latency_ms=result.load_chunks_latency_ms,
+        predict_latency_ms=result.predict_latency_ms,
         created_at=result.created_at,
         items=[
             RerankItemResponse(

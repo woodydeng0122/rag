@@ -15,6 +15,7 @@ class Project:
     description: str = ""
     embed_model_id: str = ""
     embed_dimension: int = 512
+    rerank_model_id: str = ""
     user_id: str = ""
     created_at: datetime | None = None
     updated_at: datetime | None = None

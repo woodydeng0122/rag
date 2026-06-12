@@ -12,6 +12,7 @@ class EmbedModelStatus(str, Enum):
 class EmbedModelItem(BaseModel):
     id: str
     name: str
+    model_type: str = "embed"
     dimension: int
     description: str = ""
     status: EmbedModelStatus = EmbedModelStatus.OFFLINE

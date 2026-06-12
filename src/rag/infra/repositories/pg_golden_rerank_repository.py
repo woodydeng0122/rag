@@ -15,13 +15,18 @@ class PgGoldenRerankRepository(GoldenRerankRepositoryPort, BaseRepository):
                     to_uuid(rerank.golden_id),
                 )
                 row = await conn.fetchrow(
-                    """INSERT INTO golden_rerank (golden_id, top_k, latency_ms, model_name)
-                    VALUES ($1, $2, $3, $4)
-                    RETURNING id, golden_id, top_k, latency_ms, model_name, created_at""",
+                    """INSERT INTO golden_rerank (golden_id, top_k, latency_ms, model_name,
+                       load_retrieval_latency_ms, load_chunks_latency_ms, predict_latency_ms)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    RETURNING id, golden_id, top_k, latency_ms, model_name,
+                              load_retrieval_latency_ms, load_chunks_latency_ms, predict_latency_ms, created_at""",
                     to_uuid(rerank.golden_id),
                     rerank.top_k,
                     rerank.latency_ms,
                     rerank.model_name,
+                    rerank.load_retrieval_latency_ms,
+                    rerank.load_chunks_latency_ms,
+                    rerank.predict_latency_ms,
                 )
                 rerank_id = str(row["id"])
                 for item in items:
@@ -39,7 +44,8 @@ class PgGoldenRerankRepository(GoldenRerankRepositoryPort, BaseRepository):
     async def get_by_golden_id(self, golden_id: str) -> tuple[GoldenRerank, list[GoldenRerankItem]] | None:
         async with acquire_connection() as conn:
             row = await conn.fetchrow(
-                """SELECT id, golden_id, top_k, latency_ms, model_name, created_at
+                """SELECT id, golden_id, top_k, latency_ms, model_name,
+                          load_retrieval_latency_ms, load_chunks_latency_ms, predict_latency_ms, created_at
                 FROM golden_rerank WHERE golden_id = $1""",
                 to_uuid(golden_id),
             )
@@ -99,6 +105,9 @@ def _row_to_rerank(row) -> GoldenRerank:
         top_k=row["top_k"],
         latency_ms=row["latency_ms"],
         model_name=row["model_name"] or "",
+        load_retrieval_latency_ms=row.get("load_retrieval_latency_ms", 0) or 0,
+        load_chunks_latency_ms=row.get("load_chunks_latency_ms", 0) or 0,
+        predict_latency_ms=row.get("predict_latency_ms", 0) or 0,
         created_at=row["created_at"],
     )
 

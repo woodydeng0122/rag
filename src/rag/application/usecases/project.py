@@ -17,19 +17,28 @@ class ProjectUseCase:
         self._project_repo = project_repo
         self._embed_model_repo = embed_model_repo
 
-    async def create(self, name: str, description: str, embed_model_id: str, user_id: str) -> Project:
-        """创建项目 — 校验嵌入模型存在且可用，维度与系统一致"""
+    async def create(self, name: str, description: str, embed_model_id: str, user_id: str, rerank_model_id: str | None = None) -> Project:
+        """创建项目 — 校验嵌入模型存在且可用，校验重排模型类型"""
         embed_model = await self._embed_model_repo.get_by_id(embed_model_id)
         if embed_model is None:
             raise ValueError("嵌入模型不存在")
         if not embed_model.is_online:
             raise ValueError(f"嵌入模型不可用: {embed_model.name} (status={embed_model.status.value})")
 
+        # 校验重排模型
+        if rerank_model_id:
+            rerank_model = await self._embed_model_repo.get_by_id(rerank_model_id)
+            if rerank_model is None:
+                raise ValueError("重排模型不存在")
+            if rerank_model.model_type != "reranker":
+                raise ValueError("指定的模型不是重排模型")
+
         project = Project(
             name=name,
             description=description,
             embed_model_id=embed_model_id,
             embed_dimension=embed_model.dimension,
+            rerank_model_id=rerank_model_id or "",
             user_id=user_id,
         )
         return await self._project_repo.save(project)
@@ -69,8 +78,13 @@ class ProjectUseCase:
 
     async def _to_result(self, project: Project) -> ProjectResult:
         embed_model_name = ""
+        rerank_model_name = ""
         if project.embed_model_id:
             embed_model = await self._embed_model_repo.get_by_id(project.embed_model_id)
             if embed_model:
                 embed_model_name = embed_model.name
-        return ProjectResult(project=project, embed_model_name=embed_model_name)
+        if project.rerank_model_id:
+            rerank_model = await self._embed_model_repo.get_by_id(project.rerank_model_id)
+            if rerank_model:
+                rerank_model_name = rerank_model.name
+        return ProjectResult(project=project, embed_model_name=embed_model_name, rerank_model_name=rerank_model_name)
