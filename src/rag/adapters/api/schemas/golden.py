@@ -27,6 +27,7 @@ class UpdateGoldenRequest(BaseModel):
 class RetrievalSummaryResponse(BaseModel):
     hit_count: int = 0
     gt_total: int = 0
+    hit_ranks: list[int] = []
 
 
 class GoldenResponse(BaseModel):

@@ -21,7 +21,7 @@ class ProjectEvaluationUseCase:
         self._golden_retrieval_repo = golden_retrieval_repo
         self._evaluation_repo = evaluation_repo
 
-    async def execute(self, project_id: str, top_k: int = 10, remark: str = "") -> ProjectEvaluation:
+    async def execute(self, project_id: str, top_k: int = 10, strategy: RetrievalStrategy = RetrievalStrategy.HYBRID, remark: str = "") -> ProjectEvaluation:
         """触发评估 — 加载检索结果 → 按 top_k 截断 → 计算指标 → 持久化"""
         # 加载项目下所有黄金记录
         golden_records = await self._golden_repo.list_by_project(project_id)
@@ -53,12 +53,8 @@ class ProjectEvaluationUseCase:
         embed_latency_sum = 0.0
         search_latency_sum = 0.0
         embed_model_name = ""
-        strategy = RetrievalStrategy.HYBRID
 
         for retrieval, items in retrieval_data:
-            # 取第一个检索结果的 strategy
-            if strategy == RetrievalStrategy.HYBRID and retrieval.strategy:
-                strategy = retrieval.strategy
             # 按 top_k 截断
             filtered_items = [item for item in items if item.rank <= top_k]
 
@@ -144,9 +140,16 @@ class ProjectEvaluationUseCase:
             raise ValueError("评估记录不存在")
         return True
 
-    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
-        """更新评估记录备注"""
-        updated = await self._evaluation_repo.update_remark(evaluation_id, remark)
+    async def update_evaluation(self, evaluation_id: str, strategy: RetrievalStrategy | None = None, remark: str | None = None) -> bool:
+        """更新评估记录策略和/或备注"""
+        updates: dict = {}
+        if strategy is not None:
+            updates["strategy"] = strategy
+        if remark is not None:
+            updates["remark"] = remark
+        if not updates:
+            return True
+        updated = await self._evaluation_repo.update(evaluation_id, **updates)
         if not updated:
             raise ValueError("评估记录不存在")
         return True

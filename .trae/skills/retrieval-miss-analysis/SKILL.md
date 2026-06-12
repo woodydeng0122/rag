@@ -61,6 +61,13 @@ source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format j
 
 一条 miss 可以同时归为多个类型（复合原因），此时标注主因和辅因。
 
+**判定丢失阶段**：完成 miss 类型分类后，必须判定 GT 丢失发生在哪个阶段：
+1. 检查 GT chunk_id 是否出现在 retrieved_chunks 列表中
+2. 不在 → 召回阶段丢失（粗排未召回 GT）
+3. 在但排名超出最终截断位置 → 排序阶段丢失（粗排召回了但排名不够）
+
+丢失阶段决定了改进建议的方向，必须与类型分类一起输出。
+
 **重要**：`other` 不是偷懒的垃圾桶。只有经过上述 7 步逐一排除后仍无法归类的 miss 才使用 `other`，且必须给出清晰的原因描述。如果 `other` 占比超过 20%，应重新审视分类体系是否需要扩展新类型。
 
 ### 5. 输出格式
@@ -74,8 +81,9 @@ source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format j
 - **查询**: <完整 query>
 - **主因**: <miss_type>
 - **辅因**: <miss_type> (如有)
-- **分析**: <具体分析，说明为什么归为该类型>
-- **改进建议**: <针对该类型的改进措施>
+- **丢失阶段**: 召回阶段丢失 / 排序阶段丢失
+- **分析**: <具体分析，说明为什么归为该类型，以及为什么判定为该丢失阶段>
+- **改进建议**: <针对该 miss 类型 + 丢失阶段的改进措施，从第 7 节建议表中选择>
 - **详情**: <仅当类型为 other 时必填，描述具体原因>
 
 ---
@@ -85,16 +93,36 @@ source .venv/{bin|Scripts}/activate && python -m rag miss <golden_id> --format j
 <针对该 miss 类型的改进建议>
 ```
 
-### 6. 各类型改进建议参考
+### 6. 判定召回阶段 vs 排序阶段
 
-| 类型 | 改进方向 |
-|------|----------|
-| `semantic_mismatch` | 优化 query 改写；增加同义词扩展；换用更强的 embedding 模型；添加 hybrid search |
-| `chunk_boundary_issue` | 调整分块策略（增大 chunk_size、调整 overlap）；使用语义分块；添加上下文窗口 |
-| `context_pollution` | 增加 reranker 过滤；提高检索 top-k 后再精排；添加 metadata 过滤 |
-| `hallucination` | 添加关键词匹配权重；使用 BM25 + vector hybrid search；增加 reranker |
-| `embedding_limitation` | 升级 embedding 模型维度；使用领域微调模型；添加 sparse retrieval 补充 |
-| `query_ambiguity` | 添加 query 扩展/改写；增加对话上下文；要求用户补充信息 |
-| `ground_truth_error` | 修正 GT 标注；重新审核黄金数据集质量 |
-| `ground_truth_incomplete` | 将 GT 修正为链接指向的完整文档分块；如果目标文档未分块，该记录应从黄金数据集中清理 |
-| `other` | 根据具体原因针对性改进；如果 other 占比 >20% 建议扩展分类体系 |
+改进建议必须区分 GT 丢失发生在哪个阶段，不同阶段的改进方向完全不同：
+
+- **召回阶段丢失**：GT 分块未出现在 retrieved_chunks 中（即粗排 top-k 内没有 GT）
+  - reranker 无法解决此问题，因为 reranker 只能在已召回的结果中重排
+  - 改进方向：扩大 top-k、调整 overretrieve_factor、query 改写/扩展、换用更强 embedding、调整分块策略
+- **排序阶段丢失**：GT 分块在 retrieved_chunks 中但排名靠后（在 top-k 内但不在最终截断位置内）
+  - 改进方向：增加 reranker 精排、调整 RRF fusion 权重、metadata 过滤、score 归一化
+
+**判定方法**：检查 GT chunk_id 是否出现在 retrieved_chunks 列表中：
+- 不在 → 召回阶段丢失
+- 在但排名超出最终截断位置 → 排序阶段丢失
+
+### 7. 各类型改进建议参考
+
+改进建议必须结合项目现有基础设施给出，禁止建议已采用的方案。当前项目基础设施：
+- **已采用**：Hybrid Search（BM25 + Cosine + RRF fusion）、overretrieve_factor=3
+- **未采用**：Reranker
+
+| 类型 | 召回阶段丢失 | 排序阶段丢失 |
+|------|-------------|-------------|
+| `semantic_mismatch` | query 改写/扩展；换用更强 embedding 模型；增大 top-k / overretrieve_factor | 调整 RRF fusion 权重；增加 reranker |
+| `chunk_boundary_issue` | 调整分块策略（增大 chunk_size、调整 overlap）；使用语义分块；添加上下文窗口 | 同左 |
+| `context_pollution` | 增大 top-k / overretrieve_factor 让 GT 进入候选；query 改写缩小范围 | 增加 reranker 精排；metadata 过滤；调整 RRF fusion 权重 |
+| `hallucination` | query 改写消除歧义；增大 top-k 让 GT 进入候选 | 增加 reranker；metadata 过滤 |
+| `embedding_limitation` | 升级 embedding 模型维度；使用领域微调模型；增大 top-k / overretrieve_factor | 增加 reranker 做细粒度区分 |
+| `query_ambiguity` | query 扩展/改写；增加对话上下文 | 增加 reranker；metadata 过滤 |
+| `ground_truth_error` | 修正 GT 标注；重新审核黄金数据集质量 | 同左 |
+| `ground_truth_incomplete` | 将 GT 修正为链接指向的完整文档分块；如果目标文档未分块，该记录应从黄金数据集中清理 | 同左 |
+| `other` | 根据具体原因针对性改进；如果 other 占比 >20% 建议扩展分类体系 | 同左 |
+
+**重要**：改进建议必须从上表中选择，且必须与判定的丢失阶段匹配。禁止建议项目已采用的方案（如"添加 hybrid search"）。

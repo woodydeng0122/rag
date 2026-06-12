@@ -6,11 +6,12 @@ from rag.adapters.api.schemas.project import (
     CreateProjectRequest,
     EvaluationStatsRequest,
     EvaluationStatsResponse,
-    UpdateEvaluationRemarkRequest,
+    UpdateEvaluationRequest,
     UpdateProjectRequest,
 )
 from rag.bootstrap.container import Container, get_container
 from rag.domain.entities.user import User
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -99,7 +100,8 @@ async def create_evaluation_stats(
     """触发项目评估统计 — 基于已有检索结果计算 recall@{top_k}、MRR 等指标"""
     try:
         result = await container.evaluation_usecase.execute(
-            project_id=project_id, top_k=req.top_k, remark=req.remark
+            project_id=project_id, top_k=req.top_k,
+            strategy=RetrievalStrategy(req.strategy.value), remark=req.remark
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -133,16 +135,19 @@ async def delete_evaluation_stats(
 
 
 @router.patch("/{project_id}/evaluation-stats/{evaluation_id}", response_model=EvaluationStatsResponse)
-async def update_evaluation_remark(
+async def update_evaluation(
     project_id: str,
     evaluation_id: str,
-    req: UpdateEvaluationRemarkRequest,
+    req: UpdateEvaluationRequest,
     current_user: User = Depends(get_current_user),
     container: Container = Depends(get_container),
 ):
-    """更新评估记录备注"""
+    """更新评估记录（策略、备注）"""
     try:
-        await container.evaluation_usecase.update_remark(evaluation_id, req.remark)
+        strategy = RetrievalStrategy(req.strategy.value) if req.strategy else None
+        await container.evaluation_usecase.update_evaluation(
+            evaluation_id, strategy=strategy, remark=req.remark
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     results = await container.evaluation_usecase.list_evaluations(project_id)

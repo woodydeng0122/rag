@@ -1,4 +1,13 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
+
+
+class RetrievalStrategyEnum(str, Enum):
+    cosine = "cosine"
+    vector = "vector"
+    bm25 = "bm25"
+    hybrid = "hybrid"
 
 
 class CreateProjectRequest(BaseModel):
@@ -25,6 +34,7 @@ class ProjectResponse(BaseModel):
 
 class EvaluationStatsRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=100, description="截断排名，计算 recall@{top_k}")
+    strategy: RetrievalStrategyEnum = Field(default=RetrievalStrategyEnum.hybrid, description="检索策略")
     remark: str = Field(default="", max_length=500, description="备注")
 
 
@@ -48,5 +58,6 @@ class EvaluationStatsResponse(BaseModel):
     created_at: str = ""
 
 
-class UpdateEvaluationRemarkRequest(BaseModel):
-    remark: str = Field(default="", max_length=500, description="备注")
+class UpdateEvaluationRequest(BaseModel):
+    strategy: RetrievalStrategyEnum | None = Field(default=None, description="检索策略")
+    remark: str | None = Field(default=None, max_length=500, description="备注")

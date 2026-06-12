@@ -64,13 +64,28 @@ class PgProjectEvaluationRepository(ProjectEvaluationRepositoryPort):
             )
         return result == "DELETE 1"
 
-    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
+    async def update(self, evaluation_id: str, **kwargs) -> bool:
+        """通用更新评估记录字段"""
+        if not kwargs:
+            return True
+        allowed = {"strategy", "remark"}
+        fields = []
+        values = []
+        for key, val in kwargs.items():
+            if key not in allowed:
+                continue
+            if key == "strategy":
+                val = val.value if isinstance(val, RetrievalStrategy) else val
+            fields.append(f"{key} = ${len(values) + 1}")
+            values.append(val)
+        if not fields:
+            return True
+        values.append(evaluation_id)
         pool = get_pool()
         async with pool.acquire() as conn:
             result = await conn.execute(
-                "UPDATE project_evaluation SET remark = $1 WHERE id = $2",
-                remark,
-                evaluation_id,
+                f"UPDATE project_evaluation SET {', '.join(fields)} WHERE id = ${len(values)}",
+                *values,
             )
         return result == "UPDATE 1"
 

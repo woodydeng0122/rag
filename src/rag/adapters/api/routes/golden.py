@@ -45,6 +45,7 @@ async def list_goldens(
         has_retrieval=r.id in summaries,
         retrieval_hit_count=summaries[r.id].hit_count if r.id in summaries else None,
         retrieval_gt_total=summaries[r.id].gt_total if r.id in summaries else None,
+        retrieval_hit_ranks=summaries[r.id].hit_ranks if r.id in summaries else None,
     ) for r in records]
 
 

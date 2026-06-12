@@ -10,6 +10,7 @@ class RetrievalSummary:
     """检索命中摘要"""
     hit_count: int
     gt_total: int
+    hit_ranks: list[int]
 
 
 class GoldenRetrievalRepositoryPort(ABC):

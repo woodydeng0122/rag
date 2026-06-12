@@ -22,10 +22,11 @@ class GoldenPresenter:
         has_retrieval: bool = False,
         retrieval_hit_count: int | None = None,
         retrieval_gt_total: int | None = None,
+        retrieval_hit_ranks: list[int] | None = None,
     ) -> GoldenResponse:
         summary = None
         if retrieval_hit_count is not None and retrieval_gt_total is not None:
-            summary = RetrievalSummaryResponse(hit_count=retrieval_hit_count, gt_total=retrieval_gt_total)
+            summary = RetrievalSummaryResponse(hit_count=retrieval_hit_count, gt_total=retrieval_gt_total, hit_ranks=retrieval_hit_ranks or [])
         return GoldenResponse(
             id=r.id,
             project_id=r.project_id,

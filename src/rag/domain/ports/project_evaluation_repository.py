@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from rag.domain.entities.project_evaluation import ProjectEvaluation
+from rag.domain.value_objects.retrieval_strategy import RetrievalStrategy
 
 
 class ProjectEvaluationRepositoryPort(ABC):
@@ -22,6 +23,6 @@ class ProjectEvaluationRepositoryPort(ABC):
         ...
 
     @abstractmethod
-    async def update_remark(self, evaluation_id: str, remark: str) -> bool:
-        """更新评估记录备注，返回是否成功"""
+    async def update(self, evaluation_id: str, **kwargs) -> bool:
+        """更新评估记录字段，返回是否成功"""
         ...

@@ -91,7 +91,8 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort, BaseRepository)
         rows = await self._fetch_all(
             """SELECT gr.golden_id,
                       COUNT(ri.chunk_id) FILTER (WHERE ri.chunk_id = ANY(g.ground_truth_chunks)) AS hit_count,
-                      COALESCE(array_length(g.ground_truth_chunks, 1), 0) AS gt_total
+                      COALESCE(array_length(g.ground_truth_chunks, 1), 0) AS gt_total,
+                      COALESCE(ARRAY_AGG(ri.rank) FILTER (WHERE ri.chunk_id = ANY(g.ground_truth_chunks)), '{}') AS hit_ranks
                FROM golden_retrieval gr
                JOIN golden g ON g.id = gr.golden_id
                LEFT JOIN golden_retrieval_item ri ON ri.retrieval_id = gr.id
@@ -103,6 +104,7 @@ class PgGoldenRetrievalRepository(GoldenRetrievalRepositoryPort, BaseRepository)
             str(row["golden_id"]): RetrievalSummary(
                 hit_count=row["hit_count"],
                 gt_total=row["gt_total"],
+                hit_ranks=sorted(row["hit_ranks"]) if row["hit_ranks"] else [],
             )
             for row in rows
         }
