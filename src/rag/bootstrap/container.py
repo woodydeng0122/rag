@@ -9,6 +9,7 @@ from rag.application.usecases.document import DocumentUseCase
 from rag.application.usecases.embed_model import EmbedModelUseCase
 from rag.application.usecases.golden import GoldenUseCase
 from rag.application.usecases.golden_retrieve import GoldenRetrieveUseCase
+from rag.application.usecases.golden_rerank import GoldenRerankUseCase
 from rag.application.usecases.process_document import ProcessDocumentUseCase
 from rag.application.usecases.profile import ProfileUseCase
 from rag.application.usecases.project import ProjectUseCase
@@ -32,6 +33,7 @@ class Container:
     batch_process_usecase: BatchProcessDocumentUseCase
     golden_usecase: GoldenUseCase
     golden_retrieve_usecase: GoldenRetrieveUseCase
+    golden_rerank_usecase: GoldenRerankUseCase
     evaluation_usecase: ProjectEvaluationUseCase
     scan_embed_models_usecase: ScanEmbedModelsUseCase
     project_usecase: ProjectUseCase
@@ -66,6 +68,7 @@ def _build_infra(settings: Settings):
     from rag.infra.repositories.pg_embed_model_repository import PgEmbedModelRepository
     from rag.infra.repositories.pg_golden_repository import PgGoldenRepository
     from rag.infra.repositories.pg_golden_retrieval_repository import PgGoldenRetrievalRepository
+    from rag.infra.repositories.pg_golden_rerank_repository import PgGoldenRerankRepository
     from rag.infra.repositories.pg_project_evaluation_repository import PgProjectEvaluationRepository
     from rag.infra.repositories.pg_profile_repository import PgProfileRepository
     from rag.infra.repositories.pg_qa_repository import PgQARepository
@@ -76,6 +79,7 @@ def _build_infra(settings: Settings):
     from rag.infra.retriever.cosine_retriever import CosineRetriever
     from rag.infra.retriever.pg_bm25_retriever import PgBm25Retriever
     from rag.infra.retriever.hybrid_retriever import HybridRetriever
+    from rag.infra.reranker.sentence_transformer_reranker import SentenceTransformerReranker
     from rag.infra.llm.dashscope_llm import DashScopeLLM
     from rag.infra.loader.file_document_loader import FileDocumentLoader
     from rag.infra.preprocessor.mkdocs_preprocessor import MkDocsPreprocessor
@@ -91,6 +95,7 @@ def _build_infra(settings: Settings):
     pg_embed_model_repo = PgEmbedModelRepository()
     pg_golden_repo = PgGoldenRepository()
     pg_golden_retrieval_repo = PgGoldenRetrievalRepository()
+    pg_golden_rerank_repo = PgGoldenRerankRepository()
     pg_project_evaluation_repo = PgProjectEvaluationRepository()
     pg_profile_repo = PgProfileRepository()
     pg_qa_repo = PgQARepository()
@@ -141,6 +146,9 @@ def _build_infra(settings: Settings):
         RetrievalStrategy.HYBRID: hybrid_retriever,
     }
 
+    # 重排器
+    reranker = SentenceTransformerReranker()
+
     return {
         "pg_project_repo": pg_project_repo,
         "pg_document_repo": pg_document_repo,
@@ -149,6 +157,7 @@ def _build_infra(settings: Settings):
         "pg_embed_model_repo": pg_embed_model_repo,
         "pg_golden_repo": pg_golden_repo,
         "pg_golden_retrieval_repo": pg_golden_retrieval_repo,
+        "pg_golden_rerank_repo": pg_golden_rerank_repo,
         "pg_project_evaluation_repo": pg_project_evaluation_repo,
         "pg_profile_repo": pg_profile_repo,
         "pg_qa_repo": pg_qa_repo,
@@ -161,6 +170,7 @@ def _build_infra(settings: Settings):
         "splitter": splitter,
         "llm": llm,
         "retrievers": retrievers,
+        "reranker": reranker,
         "jwt_secret_key": settings.jwt_secret_key,
         "jwt_expire_hours": settings.jwt_expire_hours,
     }
@@ -201,6 +211,13 @@ def _build_usecases(infra: dict):
         chunk_repo=infra["pg_chunk_repo"],
         project_repo=infra["pg_project_repo"],
         embed_model_repo=infra["pg_embed_model_repo"],
+    )
+    golden_rerank_usecase = GoldenRerankUseCase(
+        reranker=infra["reranker"],
+        golden_repo=infra["pg_golden_repo"],
+        golden_retrieval_repo=infra["pg_golden_retrieval_repo"],
+        golden_rerank_repo=infra["pg_golden_rerank_repo"],
+        chunk_repo=infra["pg_chunk_repo"],
     )
     project_usecase = ProjectUseCase(
         project_repo=infra["pg_project_repo"],
@@ -255,6 +272,7 @@ def _build_usecases(infra: dict):
         "batch_process_usecase": batch_process_usecase,
         "golden_usecase": golden_usecase,
         "golden_retrieve_usecase": golden_retrieve_usecase,
+        "golden_rerank_usecase": golden_rerank_usecase,
         "evaluation_usecase": evaluation_usecase,
         "scan_embed_models_usecase": scan_embed_models_usecase,
         "project_usecase": project_usecase,

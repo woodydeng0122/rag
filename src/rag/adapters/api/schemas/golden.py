@@ -41,6 +41,8 @@ class GoldenResponse(BaseModel):
     metadata: dict = Field(default_factory=dict)
     has_retrieval: bool = False
     retrieval_summary: RetrievalSummaryResponse | None = None
+    has_rerank: bool = False
+    rerank_summary: RetrievalSummaryResponse | None = None
 
 
 class RetrievalStrategyEnum(str, Enum):
@@ -95,3 +97,29 @@ class ImportGoldenResponse(BaseModel):
     success_count: int = 0
     skipped_count: int = 0
     skipped: list[SkippedRecordResponse] = Field(default_factory=list)
+
+
+class CreateRerankRequest(BaseModel):
+    top_k: int = Field(default=10, ge=1, le=100, description="重排取前 N 个候选")
+
+
+class RerankItemResponse(BaseModel):
+    chunk_id: str
+    original_rank: int
+    rerank_score: float
+    rerank_rank: int
+    content: str = ""
+    heading: str = ""
+    source_file: str = ""
+    file_type: str = ""
+    is_ground_truth: bool = False
+
+
+class RerankResponse(BaseModel):
+    id: str
+    golden_id: str
+    top_k: int
+    latency_ms: int
+    model_name: str = ""
+    created_at: str = ""
+    items: list[RerankItemResponse] = Field(default_factory=list)

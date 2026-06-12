@@ -16,6 +16,9 @@ from rag.adapters.api.schemas.golden import (
     RetrievalItemResponse,
     RetrievalResponse,
     RetrievalStrategyEnum,
+    CreateRerankRequest,
+    RerankItemResponse,
+    RerankResponse,
 )
 from rag.bootstrap.container import Container, get_container
 from rag.domain.entities.user import User
@@ -40,12 +43,17 @@ async def list_goldens(
     # 批量查询检索命中摘要
     record_ids = [r.id for r in records]
     summaries = await container.golden_retrieve_usecase.get_retrieval_summaries(record_ids)
+    rerank_summaries = await container.golden_rerank_usecase.get_rerank_summaries(record_ids)
     return [GoldenPresenter.to_response(
         r,
         has_retrieval=r.id in summaries,
         retrieval_hit_count=summaries[r.id].hit_count if r.id in summaries else None,
         retrieval_gt_total=summaries[r.id].gt_total if r.id in summaries else None,
         retrieval_hit_ranks=summaries[r.id].hit_ranks if r.id in summaries else None,
+        has_rerank=r.id in rerank_summaries,
+        rerank_hit_count=rerank_summaries[r.id].hit_count if r.id in rerank_summaries else None,
+        rerank_gt_total=rerank_summaries[r.id].gt_total if r.id in rerank_summaries else None,
+        rerank_hit_ranks=rerank_summaries[r.id].hit_ranks if r.id in rerank_summaries else None,
     ) for r in records]
 
 
@@ -147,6 +155,44 @@ async def get_retrieval(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return _retrieval_result_to_response(result)
+
+
+@router.post("/golden/{record_id}/rerank", response_model=RerankResponse)
+async def create_rerank(
+    project_id: str,
+    record_id: str,
+    req: CreateRerankRequest,
+    current_user: User = Depends(get_current_user),
+    container: Container = Depends(get_container),
+):
+    """触发重排 — 从粗排结果中取前 top_k 个候选，经 cross-encoder 重排"""
+    try:
+        result = await container.golden_rerank_usecase.execute(
+            record_id=record_id, top_k=req.top_k
+        )
+    except ValueError as e:
+        msg = str(e)
+        if "无粗排结果" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        if "top_k" in msg:
+            raise HTTPException(status_code=400, detail=msg)
+        raise HTTPException(status_code=404, detail=msg)
+    return _rerank_result_to_response(result)
+
+
+@router.get("/golden/{record_id}/rerank", response_model=RerankResponse)
+async def get_rerank(
+    project_id: str,
+    record_id: str,
+    current_user: User = Depends(get_current_user),
+    container: Container = Depends(get_container),
+):
+    """获取重排结果 — 含 chunk 内容和 GT 命中标记"""
+    try:
+        result = await container.golden_rerank_usecase.get_rerank(record_id=record_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return _rerank_result_to_response(result)
 
 
 @router.post("/golden/import", response_model=ImportGoldenResponse)
@@ -260,6 +306,32 @@ def _retrieval_result_to_response(result) -> RetrievalResponse:
                 chunk_id=item.chunk_id,
                 score=item.score,
                 rank=item.rank,
+                content=item.content,
+                heading=item.heading,
+                source_file=item.source_file,
+                file_type=item.file_type,
+                is_ground_truth=item.is_ground_truth,
+            )
+            for item in result.items
+        ],
+    )
+
+
+def _rerank_result_to_response(result) -> RerankResponse:
+    """GoldenRerankResult → RerankResponse"""
+    return RerankResponse(
+        id=result.id,
+        golden_id=result.golden_id,
+        top_k=result.top_k,
+        latency_ms=result.latency_ms,
+        model_name=result.model_name,
+        created_at=result.created_at,
+        items=[
+            RerankItemResponse(
+                chunk_id=item.chunk_id,
+                original_rank=item.original_rank,
+                rerank_score=item.rerank_score,
+                rerank_rank=item.rerank_rank,
                 content=item.content,
                 heading=item.heading,
                 source_file=item.source_file,
