@@ -85,8 +85,8 @@ class GoldenRerankUseCase:
         # 构建文档列表（用于 reranker 输入）
         documents = []
         for item in candidates:
-            chunk = chunk_map.get(item.chunk_id)
-            documents.append(chunk.content if chunk else "")
+            entry = chunk_map.get(item.chunk_id)
+            documents.append(entry[0].content if entry else "")
 
         # 执行重排
         start = time.monotonic()
